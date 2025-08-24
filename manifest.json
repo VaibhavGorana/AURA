@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Aura",
+  "version": "0.5",
+  "description": "Aura – AI browsing assistant (Dynamic Intent Detection)",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [ "https://api.groq.com/*", "*://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["panel.css"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ]
+}

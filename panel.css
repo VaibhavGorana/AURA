@@ -1,0 +1,233 @@
+/* Aura Panel */
+#aura-panel {
+  position: fixed;
+  top: 0;
+  right: -380px; /* Hidden by default for smooth slide */
+  width: 360px;
+  height: 100%;
+  background: rgba(25, 25, 25, 0.6);
+  backdrop-filter: blur(18px);
+  color: #fff;
+  box-shadow: -4px 0 25px rgba(0,0,0,0.4);
+  border-radius: 12px 0 0 12px;
+  z-index: 999999;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Segoe UI', sans-serif;
+  transition: right 0.4s ease; /* Smooth slide animation */
+}
+
+/* Active state */
+#aura-panel.active {
+  right: 0;
+}
+
+/* Header */
+.aura-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 14px;
+  font-size: 1.5em;
+  background: linear-gradient(135deg, #4dc3ff, #7b61ff);
+  color: #fff;
+  font-weight: bold;
+  border-radius: 12px 0 0 0;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Close Button */
+#aura-close {
+  position: absolute;
+  right: 12px;
+  top: 8px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.2em;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+#aura-close:hover {
+  color: #ff5f5f;
+}
+
+/* Body */
+.aura-body {
+  padding: 14px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.intent-text {
+  font-size: 1.1em;
+  margin-bottom: 12px;
+  opacity: 0.9;
+}
+
+/* Cards */
+.card {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  transition: background 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+
+.card:hover {
+  background: rgba(255,255,255,0.15);
+  transform: translateY(-2px);
+}
+
+/* Highlight Card */
+#aura-highlight-card {
+  position: fixed;
+  bottom: 20px;
+  right: 380px;
+  background: rgba(25,25,25,0.8);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 999999;
+  animation: fadeIn 0.2s ease-in-out;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Highlight Actions */
+.highlight-text {
+  font-size: 0.95em;
+  margin-bottom: 6px;
+  opacity: 0.9;
+}
+
+.highlight-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  transition: background 0.2s ease;
+}
+
+.action-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* Chat Section */
+.aura-chat {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(255,255,255,0.05);
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+#aura-chat-input {
+  flex: 1;
+  padding: 6px;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+}
+
+#aura-chat-send {
+  background: #4a90e2;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#aura-chat-response {
+  padding: 6px;
+  font-size: 0.9em;
+  color: #ddd;
+}
+
+/* Response Popup */
+#aura-response-popup {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #222;
+  padding: 12px 18px;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  transition: opacity 0.5s ease;
+  z-index: 999999;
+  display: none;
+}
+
+/* Recently Visited Section */
+.recent-section {
+  margin-top: 12px;
+  padding: 8px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+}
+
+.recent-section h4 {
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: #eee;
+}
+
+.recent-item {
+  font-size: 13px;
+  margin: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.recent-item a {
+  color: #4ea1ff;
+  text-decoration: none;
+}
+
+.recent-item .time {
+  font-size: 11px;
+  color: #bbb;
+}
+.aura-logo {
+  color: #fff;
+  font-weight: bold;
+  animation: pulseGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes pulseGlow {
+  0% {
+    text-shadow: 0 0 4px rgba(255,255,255,0.5),
+                 0 0 8px rgba(100,200,255,0.4);
+  }
+  50% {
+    text-shadow: 0 0 8px rgba(255,255,255,0.8),
+                 0 0 16px rgba(100,200,255,0.6);
+  }
+  100% {
+    text-shadow: 0 0 4px rgba(255,255,255,0.5),
+                 0 0 8px rgba(100,200,255,0.4);
+  }
+}
