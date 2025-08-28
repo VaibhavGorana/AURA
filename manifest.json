@@ -1,27 +1,58 @@
 {
   "manifest_version": 3,
-  "name": "Aura",
-  "version": "0.5",
-  "description": "Aura – AI browsing assistant (Dynamic Intent Detection)",
-  "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": [ "https://api.groq.com/*", "*://*/*"],
+  "name": "Aura \u2013 In\u2011Page Assistant (Phase 2, Tabs)",
+  "description": "GPT-style panel with tabs (Assist, Notes, Tasks, Recent), natural intent line, and local storage.",
+  "version": "0.2.0",
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "service_worker.js",
+    "type": "module"
   },
   "action": {
-    "default_icon": {
-      "16": "icon16.png",
-      "48": "icon48.png",
-      "128": "icon128.png"
+    "default_title": "Aura \u2013 Toggle Panel"
+  },
+  "commands": {
+    "toggle-aura": {
+      "suggested_key": {
+        "default": "Alt+A"
+      },
+      "description": "Toggle Aura panel"
     }
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["panel.css"],
-      "all_frames": true,
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "panel.css"
+      ],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

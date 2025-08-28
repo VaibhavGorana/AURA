@@ -1,233 +1,59 @@
-/* Aura Panel */
-#aura-panel {
-  position: fixed;
-  top: 0;
-  right: -380px; /* Hidden by default for smooth slide */
-  width: 360px;
-  height: 100%;
-  background: rgba(25, 25, 25, 0.6);
-  backdrop-filter: blur(18px);
-  color: #fff;
-  box-shadow: -4px 0 25px rgba(0,0,0,0.4);
-  border-radius: 12px 0 0 12px;
-  z-index: 999999;
-  display: flex;
-  flex-direction: column;
-  font-family: 'Segoe UI', sans-serif;
-  transition: right 0.4s ease; /* Smooth slide animation */
-}
-
-/* Active state */
-#aura-panel.active {
-  right: 0;
-}
-
-/* Header */
-.aura-header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 14px;
-  font-size: 1.5em;
-  background: linear-gradient(135deg, #4dc3ff, #7b61ff);
-  color: #fff;
-  font-weight: bold;
-  border-radius: 12px 0 0 0;
-  position: relative;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
-
-/* Close Button */
-#aura-close {
-  position: absolute;
-  right: 12px;
-  top: 8px;
-  background: none;
-  border: none;
-  color: #fff;
-  font-size: 1.2em;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-#aura-close:hover {
-  color: #ff5f5f;
-}
-
-/* Body */
-.aura-body {
-  padding: 14px;
-  flex: 1;
-  overflow-y: auto;
-}
-
-.intent-text {
-  font-size: 1.1em;
-  margin-bottom: 12px;
-  opacity: 0.9;
-}
-
-/* Cards */
-.card {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 10px;
-  transition: background 0.2s ease, transform 0.2s ease;
-  cursor: pointer;
-}
-
-.card:hover {
-  background: rgba(255,255,255,0.15);
-  transform: translateY(-2px);
-}
-
-/* Highlight Card */
-#aura-highlight-card {
-  position: fixed;
-  bottom: 20px;
-  right: 380px;
-  background: rgba(25,25,25,0.8);
-  color: #fff;
-  padding: 10px 14px;
-  border-radius: 10px;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  z-index: 999999;
-  animation: fadeIn 0.2s ease-in-out;
-  font-family: 'Segoe UI', sans-serif;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Highlight Actions */
-.highlight-text {
-  font-size: 0.95em;
-  margin-bottom: 6px;
-  opacity: 0.9;
-}
-
-.highlight-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.action-btn {
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.85em;
-  transition: background 0.2s ease;
-}
-
-.action-btn:hover {
-  background: rgba(255,255,255,0.2);
-}
-
-/* Chat Section */
-.aura-chat {
-  display: flex;
-  gap: 6px;
-  padding: 8px;
-  background: rgba(255,255,255,0.05);
-  border-top: 1px solid rgba(255,255,255,0.1);
-}
-
-#aura-chat-input {
-  flex: 1;
-  padding: 6px;
-  border-radius: 6px;
-  border: none;
-  outline: none;
-}
-
-#aura-chat-send {
-  background: #4a90e2;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-#aura-chat-response {
-  padding: 6px;
-  font-size: 0.9em;
-  color: #ddd;
-}
-
-/* Response Popup */
-#aura-response-popup {
-  position: fixed;
-  bottom: 30px;
-  right: 30px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #222;
-  padding: 12px 18px;
-  border-radius: 12px;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.2);
-  font-family: Arial, sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  transition: opacity 0.5s ease;
-  z-index: 999999;
-  display: none;
-}
-
-/* Recently Visited Section */
-.recent-section {
-  margin-top: 12px;
-  padding: 8px;
-  background: rgba(255,255,255,0.05);
-  border-radius: 8px;
-}
-
-.recent-section h4 {
-  font-size: 14px;
-  margin-bottom: 6px;
-  color: #eee;
-}
-
-.recent-item {
-  font-size: 13px;
-  margin: 4px 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.recent-item a {
-  color: #4ea1ff;
-  text-decoration: none;
-}
-
-.recent-item .time {
-  font-size: 11px;
-  color: #bbb;
-}
-.aura-logo {
-  color: #fff;
-  font-weight: bold;
-  animation: pulseGlow 3s ease-in-out infinite alternate;
-}
-
-@keyframes pulseGlow {
-  0% {
-    text-shadow: 0 0 4px rgba(255,255,255,0.5),
-                 0 0 8px rgba(100,200,255,0.4);
-  }
-  50% {
-    text-shadow: 0 0 8px rgba(255,255,255,0.8),
-                 0 0 16px rgba(100,200,255,0.6);
-  }
-  100% {
-    text-shadow: 0 0 4px rgba(255,255,255,0.5),
-                 0 0 8px rgba(100,200,255,0.4);
-  }
-}
+:root{--aura-bg:#0f1117;--aura-surface:#11141b;--aura-border:rgba(255,255,255,.08);--aura-text:#e6e7ea;
+--aura-muted:#a8b0bd;--aura-accent:#4f8cff;--aura-accent-2:#7aa2ff;--aura-chip:rgba(255,255,255,.06);
+--aura-chip-hover:rgba(255,255,255,.12);--aura-input:rgba(255,255,255,.06);--aura-shadow:0 8px 30px rgba(0,0,0,.35)}
+#aura-root{all:initial}
+#aura-bubble{position:fixed;right:18px;bottom:20px;width:48px;height:48px;border-radius:50%;
+background:radial-gradient(120% 120% at 80% 20%,var(--aura-accent-2) 0%,var(--aura-accent) 40%,#1b2030 100%);
+box-shadow:var(--aura-shadow);display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;cursor:pointer;z-index:2147483647;border:1px solid rgba(255,255,255,.15);
+transition:transform .15s ease, filter .15s ease}
+#aura-bubble:hover{transform:translateY(-1px);filter:brightness(1.06)}
+#aura-panel{position:fixed;top:0;right:0;width:min(440px,92vw);height:100vh;background:linear-gradient(180deg,var(--aura-surface),#0e1219 40%,#0b0f16 100%);
+color:var(--aura-text);border-left:1px solid var(--aura-border);transform:translateX(100%);transition:transform .18s ease;z-index:2147483647;display:flex;flex-direction:column;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;box-shadow:var(--aura-shadow)}
+#aura-panel[data-open="true"]{transform:translateX(0%)}
+.aura-header{position:sticky;top:0;display:grid;grid-template-columns:1fr auto;align-items:center;padding:12px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,0));border-bottom:1px solid var(--aura-border)}
+.aura-title{font-weight:650;letter-spacing:.2px;display:inline-flex;align-items:center;gap:8px}
+.aura-dot{width:10px;height:10px;border-radius:50%;display:inline-block;background:radial-gradient(circle at 35% 35%,var(--aura-accent-2),var(--aura-accent));box-shadow:0 0 0 3px rgba(79,140,255,.15)}
+.aura-phase{opacity:.6;font-weight:500;font-size:12px}
+.aura-actions{display:inline-flex;gap:8px}
+.aura-icon-btn{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:10px;padding:6px 10px;cursor:pointer}
+.aura-icon-btn:hover{background:var(--aura-chip-hover)}
+/* Tabs */
+.aura-tabs{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--aura-border)}
+.aura-tabs .tab{background:transparent;border:1px solid transparent;color:var(--aura-text);padding:6px 10px;border-radius:9px;cursor:pointer;font-size:12px}
+.aura-tabs .tab:hover{background:rgba(255,255,255,.04);border-color:var(--aura-border)}
+.aura-tabs .tab.active{background:rgba(79,140,255,.18);border-color:rgba(79,140,255,.35)}
+.tabpane{display:block}
+/* Settings */
+.aura-settings{padding:10px 12px;border-bottom:1px solid var(--aura-border);display:grid;grid-template-columns:1fr;gap:8px}
+.aura-settings .row{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center}
+.aura-settings input,.aura-settings select{background:var(--aura-input);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:10px;padding:8px 10px;outline:none}
+.aura-settings .hint{opacity:.6;font-size:12px}
+.aura-btn{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:13px}
+.aura-btn.primary{background:var(--aura-accent);border-color:var(--aura-accent);color:#fff}
+/* Assist */
+.aura-intentbar{margin:10px 12px 6px;padding:10px 12px;border:1px solid var(--aura-border);border-radius:12px;background:rgba(255,255,255,.04)}
+.aura-chips{display:flex;gap:8px;flex-wrap:wrap;padding:4px 12px 8px}
+.chip{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer}
+.chip:hover{background:var(--aura-chip-hover)}
+.aura-thread{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
+.msg{border-radius:14px;padding:10px 12px;line-height:1.45;font-size:14px;border:1px solid var(--aura-border);background:rgba(255,255,255,.04);max-width:85%}
+.msg.user{margin-left:auto;background:rgba(79,140,255,.12);border-color:rgba(79,140,255,.35)}
+.msg.assistant.error{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35)}
+.msg.pending{opacity:.7;font-style:italic}
+/* Notes/Tasks/Recent lists */
+.pane-section{padding:10px 12px;border-bottom:1px solid var(--aura-border)}
+.list{list-style:none;margin:0;padding:12px}
+.row-note,.row-task{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--aura-border);border-radius:12px;background:rgba(255,255,255,.04);margin-bottom:8px}
+.note-text{flex:1}
+.note-meta{font-size:12px;color:var(--aura-muted)}
+.note-actions{margin-left:auto}
+.task-item{display:flex;align-items:center;gap:8px}
+.recent-link{color:#cfe0ff;text-decoration:none}
+.recent-link:hover{text-decoration:underline}
+/* Footer */
+.aura-footer{position:sticky;bottom:0;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--aura-border);background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.02) 60%)}
+#aura-input{resize:vertical;min-height:44px;max-height:180px;background:var(--aura-input);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:12px;padding:10px 12px;outline:none}
+.aura-footer .hint{opacity:.6;font-size:12px}
+/* Toast */
+.aura-toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%) translateY(10px);background:rgba(20,20,24,.94);color:#fff;padding:10px 14px;border-radius:10px;border:1px solid var(--aura-border);opacity:0;transition:transform .15s ease,opacity .15s ease;z-index:2147483647;box-shadow:var(--aura-shadow)}
+.aura-toast.show{transform:translateX(-50%) translateY(0px);opacity:1}
