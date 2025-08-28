@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Aura \u2013 In\u2011Page Assistant (Phase 2, Tabs)",
-  "description": "GPT-style panel with tabs (Assist, Notes, Tasks, Recent), natural intent line, and local storage.",
-  "version": "0.2.0",
+  "name": "Aura \u2013 In\u2011Page Assistant (Phase 3 Fix)",
+  "description": "Context-aware panel with tabs; fixed duplicate const declarations.",
+  "version": "0.3.1",
   "icons": {
     "16": "assets/icon16.png",
     "48": "assets/icon48.png",

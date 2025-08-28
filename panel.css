@@ -1,3 +1,4 @@
+
 :root{--aura-bg:#0f1117;--aura-surface:#11141b;--aura-border:rgba(255,255,255,.08);--aura-text:#e6e7ea;
 --aura-muted:#a8b0bd;--aura-accent:#4f8cff;--aura-accent-2:#7aa2ff;--aura-chip:rgba(255,255,255,.06);
 --aura-chip-hover:rgba(255,255,255,.12);--aura-input:rgba(255,255,255,.06);--aura-shadow:0 8px 30px rgba(0,0,0,.35)}
@@ -17,21 +18,21 @@ color:var(--aura-text);border-left:1px solid var(--aura-border);transform:transl
 .aura-actions{display:inline-flex;gap:8px}
 .aura-icon-btn{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:10px;padding:6px 10px;cursor:pointer}
 .aura-icon-btn:hover{background:var(--aura-chip-hover)}
-/* Tabs */
 .aura-tabs{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--aura-border)}
 .aura-tabs .tab{background:transparent;border:1px solid transparent;color:var(--aura-text);padding:6px 10px;border-radius:9px;cursor:pointer;font-size:12px}
 .aura-tabs .tab:hover{background:rgba(255,255,255,.04);border-color:var(--aura-border)}
 .aura-tabs .tab.active{background:rgba(79,140,255,.18);border-color:rgba(79,140,255,.35)}
 .tabpane{display:block}
-/* Settings */
 .aura-settings{padding:10px 12px;border-bottom:1px solid var(--aura-border);display:grid;grid-template-columns:1fr;gap:8px}
 .aura-settings .row{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center}
 .aura-settings input,.aura-settings select{background:var(--aura-input);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:10px;padding:8px 10px;outline:none}
 .aura-settings .hint{opacity:.6;font-size:12px}
 .aura-btn{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:13px}
 .aura-btn.primary{background:var(--aura-accent);border-color:var(--aura-accent);color:#fff}
-/* Assist */
 .aura-intentbar{margin:10px 12px 6px;padding:10px 12px;border:1px solid var(--aura-border);border-radius:12px;background:rgba(255,255,255,.04)}
+.aura-intentbar .line{margin-bottom:6px;color:var(--aura-text)}
+.aura-intentbar .badges{display:flex;gap:6px;flex-wrap:wrap}
+.aura-intentbar .badge{font-size:12px;color:var(--aura-muted);border:1px solid var(--aura-border);padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.03)}
 .aura-chips{display:flex;gap:8px;flex-wrap:wrap;padding:4px 12px 8px}
 .chip{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer}
 .chip:hover{background:var(--aura-chip-hover)}
@@ -40,7 +41,6 @@ color:var(--aura-text);border-left:1px solid var(--aura-border);transform:transl
 .msg.user{margin-left:auto;background:rgba(79,140,255,.12);border-color:rgba(79,140,255,.35)}
 .msg.assistant.error{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35)}
 .msg.pending{opacity:.7;font-style:italic}
-/* Notes/Tasks/Recent lists */
 .pane-section{padding:10px 12px;border-bottom:1px solid var(--aura-border)}
 .list{list-style:none;margin:0;padding:12px}
 .row-note,.row-task{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--aura-border);border-radius:12px;background:rgba(255,255,255,.04);margin-bottom:8px}
@@ -50,10 +50,17 @@ color:var(--aura-text);border-left:1px solid var(--aura-border);transform:transl
 .task-item{display:flex;align-items:center;gap:8px}
 .recent-link{color:#cfe0ff;text-decoration:none}
 .recent-link:hover{text-decoration:underline}
-/* Footer */
 .aura-footer{position:sticky;bottom:0;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--aura-border);background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.02) 60%)}
 #aura-input{resize:vertical;min-height:44px;max-height:180px;background:var(--aura-input);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:12px;padding:10px 12px;outline:none}
 .aura-footer .hint{opacity:.6;font-size:12px}
-/* Toast */
 .aura-toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%) translateY(10px);background:rgba(20,20,24,.94);color:#fff;padding:10px 14px;border-radius:10px;border:1px solid var(--aura-border);opacity:0;transition:transform .15s ease,opacity .15s ease;z-index:2147483647;box-shadow:var(--aura-shadow)}
 .aura-toast.show{transform:translateX(-50%) translateY(0px);opacity:1}
+
+
+/* --- HOTFIX: scrolling + hidden visibility + tab layout --- */
+#aura-panel, .tabpane { min-height: 0; }
+.aura-tabs { position: sticky; top: 48px; background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)); z-index: 2; }
+.tabpane { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.tabpane[hidden] { display: none !important; }
+.aura-thread { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.aura-settings[hidden] { display: none !important; }

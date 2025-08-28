@@ -1,7 +1,8 @@
+
 const SETTINGS_KEY = 'aura_settings';
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Aura Phase 2 installed');
+  console.log('Aura Phase 3 installed');
 });
 
 async function ensureInjectedAndToggle(tabId) {
