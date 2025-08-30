@@ -2,7 +2,7 @@
 const SETTINGS_KEY = 'aura_settings';
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Aura Phase 3 installed');
+  console.log('Aura Phase 4 installed');
 });
 
 async function ensureInjectedAndToggle(tabId) {
@@ -40,6 +40,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const { prompt, context, mode='quick' } = msg.payload || {};
         const result = await handleChat({ prompt, context, mode });
         sendResponse({ ok:true, result });
+      } else if (msg?.type === 'aura:testProvider') {
+        const ok = await testProvider();
+        sendResponse({ ok });
       }
     } catch (e) {
       console.error('Aura SW error:', e);
@@ -49,17 +52,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
-async function handleChat({ prompt, context = {}, mode }) {
+async function getCfg() {
   const defaults = { provider:'groq', apiKey:'', model:'llama3-8b-8192', mock:true };
   const { [SETTINGS_KEY]: settings = defaults } = await chrome.storage.local.get(SETTINGS_KEY);
-  const cfg = { ...defaults, ...settings };
+  return { ...defaults, ...settings };
+}
 
+async function handleChat({ prompt, context = {}, mode }) {
+  const cfg = await getCfg();
   if (cfg.mock || !cfg.apiKey) {
     const header = mode === 'deep' ? 'Structured Answer' : 'Quick Answer';
     return { provider:'mock', text:`**${header}**\n${prompt}\n\n_(Connect an API key in Settings for live answers.)_` };
   }
   if (cfg.provider === 'groq') return await callGroq({ ...cfg, prompt, context, mode });
   return { provider:'mock', text:`Quick Answer (mock): ${prompt}` };
+}
+
+async function testProvider() {
+  const cfg = await getCfg();
+  if (!cfg.apiKey || cfg.mock) return false;
+  try {
+    const res = await callGroq({ ...cfg, prompt: 'ping', context: {}, mode: 'quick' });
+    return !!res?.text;
+  } catch { return false; }
 }
 
 async function callGroq({ apiKey, model, prompt, context = {}, mode }) {

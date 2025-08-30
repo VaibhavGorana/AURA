@@ -6,14 +6,34 @@
   const K_NOTES = 'aura_notes';
   const K_TASKS = 'aura_tasks';
   const K_RECENTS = 'aura_recents';
+  const THREAD_PREFIX = 'aura_thread_';
 
-  async function getStore(key, fallback) {
-    try { const v = await chrome.storage.local.get(key); return v[key] ?? fallback; } catch { return fallback; }
-  }
-  async function setStore(key, value) {
-    try { await chrome.storage.local.set({ [key]: value }); } catch {}
+  // helpers
+  async function getStore(key, fallback) { try { const v = await chrome.storage.local.get(key); return v[key] ?? fallback; } catch { return fallback; } }
+  async function setStore(key, value) { try { await chrome.storage.local.set({ [key]: value }); } catch {} }
+  function hostName(){ try { return new URL(location.href).hostname.replace(/^www\./,''); } catch { return location.hostname; } }
+  function threadKey(){ return THREAD_PREFIX + hostName(); }
+  function now(){ return Date.now(); }
+
+  // markdown (safe-ish)
+  function escapeHtml(s=''){ return s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+  function mdRender(s=''){
+    // code fences
+    s = s.replace(/```([\s\S]*?)```/g, (_, code) => `<pre class="code"><code>${escapeHtml(code.trim())}</code></pre>`);
+    // inline code
+    s = s.replace(/`([^`]+)`/g, (_, code) => `<code class="inline">${escapeHtml(code)}</code>`);
+    // bold/italic
+    s = s.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>');
+    // links
+    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    // lists (very simple)
+    s = s.replace(/(^|\n)\s*-\s+(.*?)(?=\n(?!\s*-\s)|$)/g, (_, a, item)=> `${a}<ul><li>${item}</li></ul>`);
+    // line breaks
+    s = s.replace(/\n/g,'<br/>');
+    return s;
   }
 
+  // root
   const root = document.createElement('div');
   root.id = 'aura-root';
   document.documentElement.appendChild(root);
@@ -25,7 +45,7 @@
         <div class="aura-title">
           <span class="aura-dot"></span>
           <span class="title-text">Aura</span>
-          <span class="aura-phase">Phase 3</span>
+          <span class="aura-phase">Phase 4</span>
         </div>
         <div class="aura-actions">
           <button id="aura-btn-settings" class="aura-icon-btn" aria-label="Settings">⚙</button>
@@ -45,9 +65,12 @@
           <select id="aura-provider"><option value="groq">Groq (OpenAI-compatible)</option></select>
         </div>
         <div class="row"><label>Model</label><input id="aura-model" placeholder="llama3-8b-8192"/></div>
-        <div class="row"><label>API Key</label><input id="aura-apikey" placeholder="sk-..." /></div>
+        <div class="row"><label>API Key</label><input id="aura-apikey" type="password" placeholder="sk-..." /></div>
         <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-mock" checked/> Use mock responses</label></div>
-        <div class="row"><label></label><button id="aura-save-settings" class="aura-btn primary">Save</button></div>
+        <div class="row"><label></label>
+          <button id="aura-test" class="aura-btn">Test connection</button>
+          <button id="aura-save-settings" class="aura-btn primary">Save</button>
+        </div>
         <div class="hint">Settings stay on your device. Don’t paste secrets on shared machines.</div>
       </div>
 
@@ -55,6 +78,11 @@
         <div class="aura-intentbar" id="aura-intentbar" aria-live="polite">
           <div class="line" id="aura-intentline"></div>
           <div class="badges" id="aura-badges"></div>
+          <div class="intent-actions">
+            <button id="aura-newchat" class="linklike">New chat</button>
+            <button id="aura-clear" class="linklike">Clear thread</button>
+            <button id="aura-resetctx" class="linklike">Reset context</button>
+          </div>
         </div>
         <div class="aura-chips" id="aura-chips"></div>
         <div id="aura-thread" class="aura-thread"></div>
@@ -96,7 +124,7 @@
     </div>
   `;
 
-  // Elements
+  // Elements (one-time)
   const bubble = root.querySelector('#aura-bubble');
   const panel = root.querySelector('#aura-panel');
   const closeBtn = root.querySelector('#aura-btn-close');
@@ -109,17 +137,20 @@
   const modelEl = root.querySelector('#aura-model');
   const apiKeyEl = root.querySelector('#aura-apikey');
   const mockEl = root.querySelector('#aura-mock');
+  const testBtn = root.querySelector('#aura-test');
   const saveSettingsBtn = root.querySelector('#aura-save-settings');
 
-  // Assist elements
   const intentline = root.querySelector('#aura-intentline');
   const badges = root.querySelector('#aura-badges');
   const chipsEl = root.querySelector('#aura-chips');
+  const newChatBtn = root.querySelector('#aura-newchat');
+  const clearBtn = root.querySelector('#aura-clear');
+  const resetCtxBtn = root.querySelector('#aura-resetctx');
+
   const thread = root.querySelector('#aura-thread');
   const input = root.querySelector('#aura-input');
   const sendBtn = root.querySelector('#aura-send');
 
-  // Notes
   const noteInput = root.querySelector('#note-input');
   const noteAddBtn = root.querySelector('#note-add');
   const noteAddSelBtn = root.querySelector('#note-add-selection');
@@ -127,17 +158,15 @@
   const noteClearBtn = root.querySelector('#note-clear');
   const notesList = root.querySelector('#notes-list');
 
-  // Tasks
   const taskInput = root.querySelector('#task-input');
   const taskAddBtn = root.querySelector('#task-add');
   const taskClearBtn = root.querySelector('#task-clear');
   const tasksList = root.querySelector('#tasks-list');
 
-  // Recent
   const recentList = root.querySelector('#recent-list');
   const recentRefreshBtn = root.querySelector('#recent-refresh');
 
-  // Toggle
+  // Panel toggle
   function togglePanel(force){ panel.dataset.open = String(force ?? (panel.dataset.open !== 'true')); }
   bubble.addEventListener('click', () => togglePanel(true));
   closeBtn.addEventListener('click', () => togglePanel(false));
@@ -168,9 +197,12 @@
     toast(res?.ok ? 'Settings saved' : 'Failed to save settings');
     if (res?.ok) settingsEl.setAttribute('hidden','');
   });
+  testBtn.addEventListener('click', async () => {
+    const ok = await chrome.runtime.sendMessage({ type:'aura:testProvider' });
+    toast(ok?.ok ? 'Provider OK' : 'Provider check failed (enable key & disable Mock)');
+  });
 
-  // Context detection helpers
-  function getHost(){ try { return new URL(location.href).hostname.replace(/^www\./,''); } catch { return location.hostname; } }
+  // -------- Context detection (stable during conversation) --------
   function estReadingTime(text){
     const words = (text || '').trim().split(/\s+/).filter(Boolean).length;
     if (!words) return null;
@@ -186,155 +218,190 @@
       return txt.replace(/\s+/g, ' ').trim().slice(0, 4000);
     } catch { return ''; }
   }
-
-  function detectContext(){
+  function computeContext(){
     const url = location.href;
     const title = (document.title || '').replace(/\s*[-|–].*$/, '').trim();
-    const host = getHost();
+    const host = hostName();
     const u = new URL(url);
     const path = u.pathname || '';
-
     const isSearch = /(google\.[^/]+\/search|bing\.com\/search|duckduckgo\.com|search\?)/i.test(url);
     const isYouTube = /(^|\.)(youtube\.com)$/.test(host) && /\/watch/.test(path);
     const isWiki = /wikipedia\.org$/i.test(host);
     const isGitHub = /github\.com$/i.test(host);
     const isProduct = /(amazon\.[^/]+\/(dp|gp\/product)|flipkart\.com|ebay\.[^/]+\/itm|product)/i.test(url);
     const isPDF = /\.pdf(\?|$)/i.test(path);
-
     const readTime = estReadingTime(extractMainText());
-    const sel = String(window.getSelection() || '').trim();
-    const hasSel = sel && sel.length > 8;
 
     if (isSearch) {
       const q = u.searchParams.get('q') || u.searchParams.get('query') || '';
       const query = (q || title).trim().replace(/\s+/g, ' ').slice(0, 120);
-      return {
-        intent: query ? `It looks like you're looking for “${query}”. Want a quick answer or better phrasing?`
-                      : `It looks like you're exploring search results. Want a quick answer or better phrasing?`,
-        badges:[`🔎 ${host}`],
-        chips:[
-          { label:'Refine query', template: query ? `Improve this search query: ${query}` : 'Help me refine my search query' },
-          { label:'Quick answer', template: query ? `Give me a concise answer about: ${query}` : 'Give me a concise answer to my question' },
-          { label:'Related terms', template: query ? `Suggest related search terms for: ${query}` : 'Suggest related search terms' },
-          { label:'Result summary', template: query ? `From typical top results, summarize what I should know about: ${query}` : 'Summarize common answers briefly' }
-        ]
-      };
+      return { intent: query ? `It looks like you're looking for “${query}”. Want a quick answer or better phrasing?` : `It looks like you're exploring search results. Want a quick answer or better phrasing?`,
+               badges:[`🔎 ${host}`],
+               chips:[
+                 { label:'Refine query', template: query ? `Improve this search query: ${query}` : 'Help me refine my search query' },
+                 { label:'Quick answer', template: query ? `Give me a concise answer about: ${query}` : 'Give me a concise answer to my question' },
+                 { label:'Related terms', template: query ? `Suggest related search terms for: ${query}` : 'Suggest related search terms' }
+               ] };
     }
-    if (isYouTube) {
-      return {
-        intent:`It looks like you’re watching a video — “${title || host}”. Want a summary or key moments?`,
-        badges:[`▶️ ${host}`],
-        chips:[
-          { label:'Video TL;DR', template:`Summarize the main points of this video based on its title and context.` },
-          { label:'Key moments', template:`List likely key moments or chapters for this video topic.` },
-          { label:'Follow-up questions', template:`Suggest thoughtful follow-up questions to deepen understanding of this video.` }
-        ]
-      };
-    }
+    if (isYouTube) return { intent:`It looks like you’re watching a video — “${title || host}”. Want a summary or key moments?`, badges:[`▶️ ${host}`], chips:[
+      { label:'Video TL;DR', template:`Summarize the main points of this video based on its title and context.` },
+      { label:'Key moments', template:`List likely key moments or chapters for this video topic.` }
+    ]};
     if (isGitHub) {
       const parts = path.split('/').filter(Boolean);
       const repo = parts.length >= 2 ? `${parts[0]}/${parts[1]}` : title || host;
-      return {
-        intent:`It looks like you’re viewing a code repository — “${repo}”. Want a README or feature overview?`,
-        badges:[`👩‍💻 ${host}`],
-        chips:[
-          { label:'Explain repo', template:`Give a high-level overview of the ${repo} repository based on its README and common patterns.` },
-          { label:'How to run', template:`What are typical steps to run ${repo}? Provide a concise checklist.` },
-          { label:'Key files', template:`List likely key files or directories and what they do for ${repo}.` }
-        ]
-      };
+      return { intent:`It looks like you’re viewing a code repository — “${repo}”. Want a README or feature overview?`, badges:[`👩‍💻 ${host}`], chips:[
+        { label:'Explain repo', template:`Give a high-level overview of the ${repo} repository based on its README and common patterns.` },
+        { label:'Key files', template:`List likely key files or directories and what they do for ${repo}.` }
+      ]};
     }
-    if (isWiki) {
-      return {
-        intent:`It looks like you’re reading a reference page — “${title || host}”. Want a concise summary or key facts?`,
-        badges:[`📘 ${host}`, readTime && `⏱️ ${readTime}`].filter(Boolean),
-        chips:[
-          { label:'Summary', template:`Summarize the key points of this topic in 5 bullets.` },
-          { label:'Key facts', template:`List the most important facts and dates about this topic.` },
-          { label:'Related topics', template:`Suggest closely related topics I should explore next.` }
-        ]
-      };
-    }
-    if (isProduct) {
-      const topic = title || host;
-      return {
-        intent:`It looks like you’re comparing products — “${topic}”. Want a quick features/price breakdown?`,
-        badges:[`🛒 ${host}`],
-        chips:[
-          { label:'Compare features', template:`Create a simple feature comparison for ${topic}.` },
-          { label:'Pros & cons', template:`Provide concise pros and cons for ${topic}.` },
-          { label:'What to check', template:`List key things to check before buying ${topic}.` }
-        ]
-      };
-    }
-    if (isPDF) {
-      return {
-        intent:`It looks like you’re viewing a PDF. Want an overview or bullet summary?`,
-        badges:[`📄 ${host}`],
-        chips:[
-          { label:'Outline', template:`Provide a brief outline of the key sections in this PDF.` },
-          { label:'Key takeaways', template:`List the top 5 takeaways from this PDF.` },
-          { label:'Explain terms', template:`Explain jargon or complex terms mentioned in this PDF.` }
-        ]
-      };
-    }
-    const topic = title || host;
-    const selectionAware = hasSel ? `You selected some text — want it explained or simplified?` : `Want a TL;DR or key takeaways?`;
-    return {
-      intent:`It looks like you’re reading about “${topic}”. ${selectionAware}`,
-      badges:[`📰 ${host}`, (readTime && `⏱️ ${readTime}`)].filter(Boolean),
-      chips: hasSel ? [
-        { label:'Explain selection', template:`Explain this selection in simple terms:\n\n${sel.slice(0,700)}` },
-        { label:'Translate selection', template:`Translate this into English:\n\n${sel.slice(0,700)}` },
-        { label:'Summarize selection', template:`Summarize this selection in 3-5 bullets:\n\n${sel.slice(0,700)}` }
-      ] : [
-        { label:'TL;DR', template:`Give a concise TL;DR of this page.` },
-        { label:'Key takeaways', template:`List 5 key takeaways from this page.` },
-        { label:'Explain jargon', template:`Explain any jargon or complex terms on this page.` }
-      ]
-    };
+    if (isWiki) return { intent:`It looks like you’re reading a reference page — “${title || host}”. Want a concise summary or key facts?`, badges:[`📘 ${host}`, readTime && `⏱️ ${readTime}`].filter(Boolean), chips:[
+      { label:'Summary', template:`Summarize the key points of this topic in 5 bullets.` },
+      { label:'Key facts', template:`List the most important facts and dates about this topic.` }
+    ]};
+    if (isProduct) return { intent:`It looks like you’re comparing products — “${title || host}”. Want a quick features/price breakdown?`, badges:[`🛒 ${host}`], chips:[
+      { label:'Compare features', template:`Create a simple feature comparison for ${title || host}.` },
+      { label:'Pros & cons', template:`Provide concise pros and cons for ${title || host}.` }
+    ]};
+    if (isPDF) return { intent:`It looks like you’re viewing a PDF. Want an overview or bullet summary?`, badges:[`📄 ${host}`], chips:[
+      { label:'Outline', template:`Provide a brief outline of the key sections in this PDF.` },
+      { label:'Key takeaways', template:`List the top 5 takeaways from this PDF.` }
+    ]};
+    return { intent:`It looks like you’re reading about “${title || host}”. Want a TL;DR or key takeaways?`, badges:[`📰 ${host}`, (readTime && `⏱️ ${readTime}`)].filter(Boolean), chips:[
+      { label:'TL;DR', template:`Give a concise TL;DR of this page.` },
+      { label:'Key takeaways', template:`List 5 key takeaways from this page.` }
+    ]};
   }
 
-  function renderIntentAndChips(){
-    const ctx = detectContext();
+  let contextFrozen = false;
+  let cachedContext = computeContext();
+  function renderIntentAndChips(force=false){
+    if (!force && contextFrozen) return;
+    const ctx = cachedContext = computeContext();
     intentline.textContent = ctx.intent;
-    badges.innerHTML = '';
-    (ctx.badges || []).forEach(b => {
-      const s = document.createElement('span'); s.className = 'badge'; s.textContent = b; badges.appendChild(s);
-    });
-    chipsEl.innerHTML = '';
-    (ctx.chips || []).forEach(ch => {
-      const b = document.createElement('button'); b.className = 'chip'; b.textContent = ch.label;
-      b.addEventListener('click', () => { input.value = ch.template; input.focus(); });
-      chipsEl.appendChild(b);
-    });
+    badges.innerHTML = ''; (ctx.badges||[]).forEach(b => { const s=document.createElement('span'); s.className='badge'; s.textContent=b; badges.appendChild(s); });
+    chipsEl.innerHTML = ''; (ctx.chips||[]).forEach(ch => { const b=document.createElement('button'); b.className='chip'; b.textContent=ch.label; b.addEventListener('click', ()=>{ input.value = ch.template; input.focus(); }); chipsEl.appendChild(b); });
+  }
+  renderIntentAndChips(true);
+  resetCtxBtn.addEventListener('click', ()=>{ contextFrozen=false; renderIntentAndChips(true); });
+
+  // recent tracking
+  async function pushRecent(){
+    const rec = await getStore(K_RECENTS, []);
+    const item = { url: location.href, title: document.title, ts: now() };
+    const dedup = rec.filter(r=>r.url!==item.url);
+    dedup.unshift(item);
+    await setStore(K_RECENTS, dedup.slice(0,10));
   }
 
-  let selTimer = null;
-  document.addEventListener('selectionchange', () => {
-    clearTimeout(selTimer); selTimer = setTimeout(renderIntentAndChips, 250);
-  });
+  // thread persistence
+  async function loadThread(){
+    const arr = await getStore(threadKey(), []);
+    thread.innerHTML='';
+    arr.forEach(m => appendMsg(m.role, m.text, m.ts, true));
+    if (arr.length) contextFrozen = true;
+  }
+  async function saveThread(role, text, ts){
+    const key = threadKey();
+    const arr = await getStore(key, []);
+    arr.push({ role, text, ts });
+    await setStore(key, arr.slice(-20));
+  }
+  async function clearThread(){
+    await setStore(threadKey(), []);
+    thread.innerHTML='';
+    contextFrozen = false;
+    renderIntentAndChips(true);
+  }
 
-  function esc(s=''){ return s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
-  function mdMini(s=''){ return esc(s).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br/>'); }
-  function appendMsg(role, text){ const el=document.createElement('div'); el.className=`msg ${role}`; el.innerHTML=mdMini(text); thread.appendChild(el); thread.scrollTop=thread.scrollHeight; }
+  // message rendering
+  function makeActions(text){
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-actions';
+    const copy = document.createElement('button');
+    copy.className = 'aura-icon-btn sm'; copy.textContent = 'Copy';
+    copy.addEventListener('click', async ()=>{ try { await navigator.clipboard.writeText(text); toast('Copied'); } catch { toast('Copy failed'); } });
+    wrap.appendChild(copy);
+    return wrap;
+  }
+  function appendMsg(role, text, ts = now(), skipPersist=false){
+    const el = document.createElement('div');
+    el.className = `msg ${role}`;
+    const body = document.createElement('div');
+    body.className = 'msg-body';
+    body.innerHTML = role === 'assistant' ? mdRender(text) : escapeHtml(text).replace(/\n/g,'<br/>');
 
-  async function handleSend(){
-    const prompt = input.value.trim(); if (!prompt) return;
-    input.value = '';
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+    meta.textContent = new Date(ts).toLocaleString();
+    el.title = meta.textContent;
+
+    el.appendChild(body);
+    if (role === 'assistant') el.appendChild(makeActions(text));
+    el.appendChild(meta);
+    thread.appendChild(el);
+    thread.scrollTop = thread.scrollHeight;
+
+    if (!skipPersist) saveThread(role, text, ts);
+  }
+  function appendSkeleton(){
+    const el = document.createElement('div');
+    el.className = 'msg assistant loading';
+    el.innerHTML = `<div class="sk-line"></div><div class="sk-line w60"></div>`;
+    thread.appendChild(el); thread.scrollTop = thread.scrollHeight;
+    return el;
+  }
+  function replaceSkeleton(el, newRole, newText){
+    el.remove();
+    appendMsg(newRole, newText);
+  }
+  function replaceSkeletonWithError(el, errText, retryPayload){
+    el.remove();
+    const e = document.createElement('div');
+    e.className = 'msg assistant error';
+    e.innerHTML = `<div class="msg-body">${escapeHtml(errText)}</div>`;
+    const actions = document.createElement('div'); actions.className='msg-actions';
+    const retry = document.createElement('button'); retry.className='aura-icon-btn sm'; retry.textContent='Retry';
+    retry.addEventListener('click', ()=>{ handleSend(retryPayload); });
+    actions.appendChild(retry);
+    e.appendChild(actions);
+    const meta = document.createElement('div'); meta.className='msg-meta'; meta.textContent=new Date().toLocaleString(); e.appendChild(meta);
+    thread.appendChild(e); thread.scrollTop = thread.scrollHeight;
+  }
+
+  // chat
+  let sending = false;
+  async function handleSend(forcePrompt){
+    if (sending) return;
+    const prompt = (forcePrompt ?? input.value).trim(); if (!prompt) return;
+    sending = true;
+    input.value = ''; input.disabled = true; sendBtn.disabled = true;
+
     appendMsg('user', prompt);
-    appendMsg('assistant pending', '…');
+    const sk = appendSkeleton();
+
     const sel = String(window.getSelection()||'').trim();
     const context = { url: location.href, title: document.title, selection: sel.slice(0, 1200) };
-    const res = await chrome.runtime.sendMessage({ type:'aura:chat', payload: { prompt, context } });
-    const pending = thread.querySelector('.msg.assistant.pending'); if (pending) pending.remove();
-    if (!res?.ok) { appendMsg('assistant error', `Error: ${res?.error || 'unknown'}`); return; }
-    appendMsg('assistant', res.result?.text || '(no response)');
+    try {
+      const res = await chrome.runtime.sendMessage({ type:'aura:chat', payload: { prompt, context } });
+      if (!res?.ok) throw new Error(res?.error || 'Unknown error');
+      replaceSkeleton(sk, 'assistant', res.result?.text || '(no response)');
+      contextFrozen = true;
+    } catch (e) {
+      replaceSkeletonWithError(sk, String(e), prompt);
+    } finally {
+      sending = false; input.disabled = false; sendBtn.disabled = false; input.focus();
+    }
   }
-  sendBtn.addEventListener('click', handleSend);
+  sendBtn.addEventListener('click', ()=> handleSend());
   input.addEventListener('keydown', (e)=>{ if ((e.ctrlKey||e.metaKey) && e.key==='Enter') handleSend(); });
 
+  // intent actions
+  newChatBtn.addEventListener('click', clearThread);
+  clearBtn.addEventListener('click', clearThread);
+
   // Notes
+  function esc(s=''){ return s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
   function noteRow(n, idx){
     const li=document.createElement('li'); li.className='row-note';
     li.innerHTML = `<div class="note-text">${esc(n.text)}</div>
@@ -356,20 +423,20 @@
   noteAddBtn.addEventListener('click', async ()=>{
     const text = noteInput.value.trim(); if (!text) return;
     const notes = await getStore(K_NOTES, []);
-    notes.unshift({ text, source:{ url: location.href, title: document.title }, ts: Date.now() });
+    notes.unshift({ text, source:{ url: location.href, title: document.title }, ts: now() });
     await setStore(K_NOTES, notes); noteInput.value=''; renderNotes();
   });
   noteAddSelBtn.addEventListener('click', async ()=>{
     const sel = String(window.getSelection()||'').trim(); if (!sel) { toast('No selection'); return; }
     const notes = await getStore(K_NOTES, []);
-    notes.unshift({ text: sel, source:{ url: location.href, title: document.title }, ts: Date.now() });
+    notes.unshift({ text: sel, source:{ url: location.href, title: document.title }, ts: now() });
     await setStore(K_NOTES, notes); renderNotes();
   });
   noteExportBtn.addEventListener('click', async ()=>{
     const notes = await getStore(K_NOTES, []);
     const blob = new Blob([JSON.stringify(notes, null, 2)], { type:'application/json' });
     const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='aura_notes.json'; a.click();
-    setTimeout(()=>URL.revokeObjectURL(url), 500);
+    setTimeout(()=>URL.revokeObjectURL(url),500);
   });
   noteClearBtn.addEventListener('click', async ()=>{ await setStore(K_NOTES, []); renderNotes(); });
 
@@ -399,7 +466,7 @@
   taskAddBtn.addEventListener('click', async ()=>{
     const title = taskInput.value.trim(); if (!title) return;
     const tasks = await getStore(K_TASKS, []);
-    tasks.unshift({ title, done:false, ts: Date.now() });
+    tasks.unshift({ title, done:false, ts: now() });
     await setStore(K_TASKS, tasks); taskInput.value=''; renderTasks();
   });
   taskClearBtn.addEventListener('click', async ()=>{
@@ -408,15 +475,8 @@
   });
 
   // Recent
-  async function pushRecent(){
-    const rec = await getStore(K_RECENTS, []);
-    const item = { url: location.href, title: document.title, ts: Date.now() };
-    const dedup = rec.filter(r=>r.url!==item.url);
-    dedup.unshift(item);
-    await setStore(K_RECENTS, dedup.slice(0,10));
-  }
   function recentRow(r){
-    const li=document.createElement('li'); const t=new Date(r.ts||Date.now()).toLocaleString();
+    const li=document.createElement('li'); const t=new Date(r.ts||now()).toLocaleString();
     li.innerHTML = `<a href="${esc(r.url)}" target="_blank" class="recent-link">${esc(r.title || r.url)}</a> · <span class="muted">${t}</span>`;
     return li;
   }
@@ -431,7 +491,8 @@
   // Init
   (async () => {
     await pushRecent();
-    renderIntentAndChips();
+    await loadThread();
+    renderIntentAndChips(true);
     renderNotes();
     renderTasks();
     renderRecents();
