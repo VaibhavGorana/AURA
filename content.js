@@ -283,15 +283,32 @@
 
   let contextFrozen = false;
   let cachedContext = computeContext();
+  let smartChipsLoaded = false;
+  async function fetchAndAppendSmartChips(ctx){
+    if (smartChipsLoaded) return; smartChipsLoaded = true;
+    try {
+      const payload = { context: { url: location.href, title: document.title, host: location.hostname, page: ctx.intent, badges: ctx.badges } };
+      const resp = await chrome.runtime.sendMessage({ type:'aura:smartChips', payload });
+      const list = resp?.result || [];
+      for (const ch of list){
+        const exists = Array.from(chipsEl.querySelectorAll('.chip')).some(b => b.textContent.trim().toLowerCase() === String(ch.label||'').trim().toLowerCase());
+        if (exists) continue;
+        const b = document.createElement('button'); b.className='chip'; b.textContent = ch.label || 'Action';
+        b.addEventListener('click', ()=>{ input.value = ch.template || ''; input.focus(); });
+        chipsEl.appendChild(b);
+      }
+    } catch {}
+  }
   function renderIntentAndChips(force=false){
     if (!force && contextFrozen) return;
     const ctx = cachedContext = computeContext();
     intentline.textContent = ctx.intent;
     badges.innerHTML = ''; (ctx.badges||[]).forEach(b => { const s=document.createElement('span'); s.className='badge'; s.textContent=b; badges.appendChild(s); });
     chipsEl.innerHTML = ''; (ctx.chips||[]).forEach(ch => { const b=document.createElement('button'); b.className='chip'; b.textContent=ch.label; b.addEventListener('click', ()=>{ input.value = ch.template; input.focus(); }); chipsEl.appendChild(b); });
+    smartChipsLoaded = false; fetchAndAppendSmartChips(ctx);
   }
   renderIntentAndChips(true);
-  resetCtxBtn.addEventListener('click', ()=>{ contextFrozen=false; renderIntentAndChips(true); });
+  resetCtxBtn.addEventListener('click', ()=>{ contextFrozen=false; renderIntentAndChips(true); smartChipsLoaded=false; });
 
   // recent tracking
   async function pushRecent(){

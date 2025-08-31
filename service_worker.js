@@ -40,6 +40,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const { prompt, context, mode='quick' } = msg.payload || {};
         const result = await handleChat({ prompt, context, mode });
         sendResponse({ ok:true, result });
+      } else if (msg?.type === 'aura:smartChips') {
+        const { context } = msg.payload || {};
+        const result = await smartChips(context||{});
+        sendResponse({ ok:true, result });
       } else if (msg?.type === 'aura:testProvider') {
         const ok = await testProvider();
         sendResponse({ ok });
@@ -55,6 +59,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 async function getCfg() {
+  // helper to parse JSON safely
+  function tryParseJson(txt){
+    try { return JSON.parse(txt); } catch {}
+    const m = txt.match(/```(?:json)?\n([\s\S]*?)\n```/i); if (m) { try { return JSON.parse(m[1]); } catch {} }
+    return null;
+  }
+  async function smartChips(context){
+    const cfg = await getCfg();
+    if (cfg.mock || !cfg.apiKey) return [];
+    const prompt = `Given this page context, propose 3-5 short action chips as JSON array of {"label": string, "template": string}. No prose.\n\nContext:\n${JSON.stringify(context).slice(0,1500)}`;
+    try {
+      const res = await callGroq({ ...cfg, prompt, context: {}, mode: 'quick' });
+      const arr = tryParseJson(res.text) || [];
+      return Array.isArray(arr) ? arr.filter(o=>o && o.label && o.template).slice(0,5) : [];
+    } catch (e) { return []; }
+  }
+
   const defaults = { provider:'groq', apiKey:'', model:'llama3-8b-8192', mock:true, toolbar:true };
   const { [SETTINGS_KEY]: settings = defaults } = await chrome.storage.local.get(SETTINGS_KEY);
   return { ...defaults, ...settings };
