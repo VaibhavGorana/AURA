@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Aura \u2013 In\u2011Page Assistant (Phase 4: Polish Pack)",
-  "description": "Production-feel polish: markdown, copy, retry, per-site thread, stable intent, and UX fixes.",
-  "version": "0.4.0",
+  "name": "Aura \u2013 In\u2011Page Assistant (Phase 5: Selection Toolbar)",
+  "description": "Adds in\u2011page selection toolbar (Explain / Summarize / Translate / Save) with panel integration.",
+  "version": "0.5.0",
   "icons": {
     "16": "assets/icon16.png",
     "48": "assets/icon48.png",

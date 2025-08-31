@@ -8,32 +8,23 @@
   const K_RECENTS = 'aura_recents';
   const THREAD_PREFIX = 'aura_thread_';
 
-  // helpers
   async function getStore(key, fallback) { try { const v = await chrome.storage.local.get(key); return v[key] ?? fallback; } catch { return fallback; } }
   async function setStore(key, value) { try { await chrome.storage.local.set({ [key]: value }); } catch {} }
   function hostName(){ try { return new URL(location.href).hostname.replace(/^www\./,''); } catch { return location.hostname; } }
   function threadKey(){ return THREAD_PREFIX + hostName(); }
   function now(){ return Date.now(); }
 
-  // markdown (safe-ish)
   function escapeHtml(s=''){ return s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
   function mdRender(s=''){
-    // code fences
     s = s.replace(/```([\s\S]*?)```/g, (_, code) => `<pre class="code"><code>${escapeHtml(code.trim())}</code></pre>`);
-    // inline code
     s = s.replace(/`([^`]+)`/g, (_, code) => `<code class="inline">${escapeHtml(code)}</code>`);
-    // bold/italic
     s = s.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>');
-    // links
     s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-    // lists (very simple)
     s = s.replace(/(^|\n)\s*-\s+(.*?)(?=\n(?!\s*-\s)|$)/g, (_, a, item)=> `${a}<ul><li>${item}</li></ul>`);
-    // line breaks
     s = s.replace(/\n/g,'<br/>');
     return s;
   }
 
-  // root
   const root = document.createElement('div');
   root.id = 'aura-root';
   document.documentElement.appendChild(root);
@@ -45,7 +36,7 @@
         <div class="aura-title">
           <span class="aura-dot"></span>
           <span class="title-text">Aura</span>
-          <span class="aura-phase">Phase 4</span>
+          <span class="aura-phase">Phase 5</span>
         </div>
         <div class="aura-actions">
           <button id="aura-btn-settings" class="aura-icon-btn" aria-label="Settings">⚙</button>
@@ -67,6 +58,7 @@
         <div class="row"><label>Model</label><input id="aura-model" placeholder="llama3-8b-8192"/></div>
         <div class="row"><label>API Key</label><input id="aura-apikey" type="password" placeholder="sk-..." /></div>
         <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-mock" checked/> Use mock responses</label></div>
+        <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-toolbar" checked/> Enable selection toolbar</label></div>
         <div class="row"><label></label>
           <button id="aura-test" class="aura-btn">Test connection</button>
           <button id="aura-save-settings" class="aura-btn primary">Save</button>
@@ -122,9 +114,17 @@
         <ul id="recent-list" class="list"></ul>
       </section>
     </div>
+
+    <!-- Selection Toolbar -->
+    <div id="aura-seltb" class="aura-seltb hidden" role="toolbar" aria-label="Selection actions">
+      <button class="tb-btn" data-act="explain" title="Explain">Explain</button>
+      <button class="tb-btn" data-act="summarize" title="Summarize">Summarize</button>
+      <button class="tb-btn" data-act="translate" title="Translate">Translate</button>
+      <button class="tb-btn" data-act="save" title="Save to Notes">Save</button>
+    </div>
   `;
 
-  // Elements (one-time)
+  // Core elements
   const bubble = root.querySelector('#aura-bubble');
   const panel = root.querySelector('#aura-panel');
   const closeBtn = root.querySelector('#aura-btn-close');
@@ -137,6 +137,7 @@
   const modelEl = root.querySelector('#aura-model');
   const apiKeyEl = root.querySelector('#aura-apikey');
   const mockEl = root.querySelector('#aura-mock');
+  const toolbarEl = root.querySelector('#aura-toolbar');
   const testBtn = root.querySelector('#aura-test');
   const saveSettingsBtn = root.querySelector('#aura-save-settings');
 
@@ -166,6 +167,8 @@
   const recentList = root.querySelector('#recent-list');
   const recentRefreshBtn = root.querySelector('#recent-refresh');
 
+  const selTb = root.querySelector('#aura-seltb');
+
   // Panel toggle
   function togglePanel(force){ panel.dataset.open = String(force ?? (panel.dataset.open !== 'true')); }
   bubble.addEventListener('click', () => togglePanel(true));
@@ -187,12 +190,18 @@
   settingsBtn.addEventListener('click', async () => {
     if (settingsEl.hasAttribute('hidden')) {
       const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
-      if (resp) { providerEl.value = resp.provider || 'groq'; modelEl.value = resp.model || 'llama3-8b-8192'; apiKeyEl.value = resp.apiKey || ''; mockEl.checked = !!resp.mock; }
+      if (resp) {
+        providerEl.value = resp.provider || 'groq';
+        modelEl.value = resp.model || 'llama3-8b-8192';
+        apiKeyEl.value = resp.apiKey || '';
+        mockEl.checked = !!resp.mock;
+        toolbarEl.checked = resp.toolbar !== false;
+      }
       settingsEl.removeAttribute('hidden');
     } else settingsEl.setAttribute('hidden','');
   });
   saveSettingsBtn.addEventListener('click', async () => {
-    const payload = { provider: providerEl.value, model: modelEl.value || 'llama3-8b-8192', apiKey: apiKeyEl.value.trim(), mock: mockEl.checked };
+    const payload = { provider: providerEl.value, model: modelEl.value || 'llama3-8b-8192', apiKey: apiKeyEl.value.trim(), mock: mockEl.checked, toolbar: toolbarEl.checked };
     const res = await chrome.runtime.sendMessage({ type:'aura:setSettings', payload });
     toast(res?.ok ? 'Settings saved' : 'Failed to save settings');
     if (res?.ok) settingsEl.setAttribute('hidden','');
@@ -202,7 +211,7 @@
     toast(ok?.ok ? 'Provider OK' : 'Provider check failed (enable key & disable Mock)');
   });
 
-  // -------- Context detection (stable during conversation) --------
+  // Context (same as Phase 4)
   function estReadingTime(text){
     const words = (text || '').trim().split(/\s+/).filter(Boolean).length;
     if (!words) return null;
@@ -236,8 +245,7 @@
       const q = u.searchParams.get('q') || u.searchParams.get('query') || '';
       const query = (q || title).trim().replace(/\s+/g, ' ').slice(0, 120);
       return { intent: query ? `It looks like you're looking for “${query}”. Want a quick answer or better phrasing?` : `It looks like you're exploring search results. Want a quick answer or better phrasing?`,
-               badges:[`🔎 ${host}`],
-               chips:[
+               badges:[`🔎 ${host}`], chips:[
                  { label:'Refine query', template: query ? `Improve this search query: ${query}` : 'Help me refine my search query' },
                  { label:'Quick answer', template: query ? `Give me a concise answer about: ${query}` : 'Give me a concise answer to my question' },
                  { label:'Related terms', template: query ? `Suggest related search terms for: ${query}` : 'Suggest related search terms' }
@@ -314,7 +322,7 @@
     renderIntentAndChips(true);
   }
 
-  // message rendering
+  // rendering
   function makeActions(text){
     const wrap = document.createElement('div');
     wrap.className = 'msg-actions';
@@ -325,41 +333,22 @@
     return wrap;
   }
   function appendMsg(role, text, ts = now(), skipPersist=false){
-    const el = document.createElement('div');
-    el.className = `msg ${role}`;
-    const body = document.createElement('div');
-    body.className = 'msg-body';
+    const el = document.createElement('div'); el.className = `msg ${role}`;
+    const body = document.createElement('div'); body.className = 'msg-body';
     body.innerHTML = role === 'assistant' ? mdRender(text) : escapeHtml(text).replace(/\n/g,'<br/>');
-
-    const meta = document.createElement('div');
-    meta.className = 'msg-meta';
-    meta.textContent = new Date(ts).toLocaleString();
-    el.title = meta.textContent;
-
-    el.appendChild(body);
-    if (role === 'assistant') el.appendChild(makeActions(text));
-    el.appendChild(meta);
-    thread.appendChild(el);
-    thread.scrollTop = thread.scrollHeight;
-
+    const meta = document.createElement('div'); meta.className = 'msg-meta'; meta.textContent = new Date(ts).toLocaleString(); el.title = meta.textContent;
+    el.appendChild(body); if (role === 'assistant') el.appendChild(makeActions(text)); el.appendChild(meta);
+    thread.appendChild(el); thread.scrollTop = thread.scrollHeight;
     if (!skipPersist) saveThread(role, text, ts);
   }
   function appendSkeleton(){
-    const el = document.createElement('div');
-    el.className = 'msg assistant loading';
-    el.innerHTML = `<div class="sk-line"></div><div class="sk-line w60"></div>`;
-    thread.appendChild(el); thread.scrollTop = thread.scrollHeight;
-    return el;
+    const el = document.createElement('div'); el.className = 'msg assistant loading'; el.innerHTML = `<div class="sk-line"></div><div class="sk-line w60"></div>`;
+    thread.appendChild(el); thread.scrollTop = thread.scrollHeight; return el;
   }
-  function replaceSkeleton(el, newRole, newText){
-    el.remove();
-    appendMsg(newRole, newText);
-  }
+  function replaceSkeleton(el, newRole, newText){ el.remove(); appendMsg(newRole, newText); }
   function replaceSkeletonWithError(el, errText, retryPayload){
     el.remove();
-    const e = document.createElement('div');
-    e.className = 'msg assistant error';
-    e.innerHTML = `<div class="msg-body">${escapeHtml(errText)}</div>`;
+    const e = document.createElement('div'); e.className = 'msg assistant error'; e.innerHTML = `<div class="msg-body">${escapeHtml(errText)}</div>`;
     const actions = document.createElement('div'); actions.className='msg-actions';
     const retry = document.createElement('button'); retry.className='aura-icon-btn sm'; retry.textContent='Retry';
     retry.addEventListener('click', ()=>{ handleSend(retryPayload); });
@@ -374,12 +363,9 @@
   async function handleSend(forcePrompt){
     if (sending) return;
     const prompt = (forcePrompt ?? input.value).trim(); if (!prompt) return;
-    sending = true;
-    input.value = ''; input.disabled = true; sendBtn.disabled = true;
-
+    sending = true; input.value = ''; input.disabled = true; sendBtn.disabled = true;
     appendMsg('user', prompt);
     const sk = appendSkeleton();
-
     const sel = String(window.getSelection()||'').trim();
     const context = { url: location.href, title: document.title, selection: sel.slice(0, 1200) };
     try {
@@ -396,7 +382,6 @@
   sendBtn.addEventListener('click', ()=> handleSend());
   input.addEventListener('keydown', (e)=>{ if ((e.ctrlKey||e.metaKey) && e.key==='Enter') handleSend(); });
 
-  // intent actions
   newChatBtn.addEventListener('click', clearThread);
   clearBtn.addEventListener('click', clearThread);
 
@@ -487,6 +472,105 @@
     rec.forEach(r=> recentList.appendChild(recentRow(r)));
   }
   recentRefreshBtn.addEventListener('click', renderRecents);
+
+  // ---------- Phase 5: Selection Toolbar ----------
+  function withinAura(node){
+    for (let n = node; n; n = n.parentNode) {
+      if (n === root) return true;
+      if (n.id === 'aura-root' || n.id === 'aura-panel') return true;
+    }
+    return false;
+  }
+  function editableAncestor(node){
+    for (let n = node; n; n = n.parentElement) {
+      const tn = n.tagName ? n.tagName.toLowerCase() : '';
+      if (tn === 'input' || tn === 'textarea') return true;
+      if (n.isContentEditable) return true;
+      if (n.id === 'aura-root' || n.id === 'aura-panel') return true;
+    }
+    return false;
+  }
+  function getSelectionText(){
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return '';
+    return String(sel).trim();
+  }
+  function getSelectionRect(){
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    const r = sel.getRangeAt(0);
+    const rect = r.getBoundingClientRect();
+    if (rect && rect.width && rect.height) return rect;
+    const node = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;
+    return node ? node.getBoundingClientRect() : null;
+  }
+  let selTimer = null;
+  let toolbarEnabled = true;
+  async function refreshToolbarSetting(){
+    try {
+      const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
+      toolbarEnabled = !resp || resp.toolbar !== false;
+    } catch { toolbarEnabled = true; }
+  }
+  refreshToolbarSetting();
+
+  function hideSelTb(){ selTb.classList.add('hidden'); }
+  function positionSelTb(){
+    if (!toolbarEnabled) { hideSelTb(); return; }
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) { hideSelTb(); return; }
+    if (!String(sel).trim() || String(sel).trim().length < 6) { hideSelTb(); return; }
+    const anchor = sel.anchorNode;
+    if (!anchor || editableAncestor(anchor)) { hideSelTb(); return; }
+    if (withinAura(anchor)) { hideSelTb(); return; }
+
+    const rect = getSelectionRect();
+    if (!rect) { hideSelTb(); return; }
+    const tb = selTb;
+    const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+    const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+    tb.classList.remove('hidden');
+    const tbWidth = tb.offsetWidth || 220;
+    const tbHeight = tb.offsetHeight || 38;
+    let left = rect.left + rect.width/2 - tbWidth/2;
+    left = Math.max(8, Math.min(vw - tbWidth - 8, left));
+    let top = rect.top - tbHeight - 8;
+    if (top < 8) top = rect.bottom + 8;
+    tb.style.left = `${Math.round(left)}px`;
+    tb.style.top = `${Math.round(top)}px`;
+  }
+
+  document.addEventListener('selectionchange', () => {
+    clearTimeout(selTimer);
+    selTimer = setTimeout(positionSelTb, 120);
+  }, { passive: true });
+  window.addEventListener('scroll', () => { if (!selTb.classList.contains('hidden')) positionSelTb(); }, { passive: true });
+  window.addEventListener('resize', () => { if (!selTb.classList.contains('hidden')) positionSelTb(); }, { passive: true });
+  document.addEventListener('mousedown', (e)=> {
+    if (e.target.closest('#aura-seltb')) return;
+    hideSelTb();
+  }, true);
+
+  selTb.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.tb-btn'); if (!btn) return;
+    const text = getSelectionText(); if (!text) { hideSelTb(); return; }
+    const act = btn.dataset.act;
+    hideSelTb();
+    togglePanel(true); showTab('assist'); input.focus();
+    if (act === 'save') {
+      const notes = await getStore(K_NOTES, []);
+      notes.unshift({ text, source:{ url: location.href, title: document.title }, ts: now() });
+      await setStore(K_NOTES, notes);
+      toast('Saved to Notes');
+      return;
+    }
+    const templates = {
+      explain: `Explain this selection in simple terms:\n\n${text}`,
+      summarize: `Summarize this selection in 3–5 bullets:\n\n${text}`,
+      translate: `Translate this into English:\n\n${text}`
+    };
+    handleSend(templates[act] || text);
+  });
 
   // Init
   (async () => {

@@ -1,15 +1,16 @@
 
-# Aura – Phase 4 (Polish Pack)
+# Aura – Phase 5 (Selection Toolbar)
 
-**New polish**
-- Real **Markdown** (bold/italic, links, lists, inline + fenced code)
-- **Copy** button on assistant messages; timestamp on hover
-- **Loading skeleton** instead of "..."; **Retry** on error
-- **Disable Send** while pending; focus returns to input
-- **Per-site thread persistence** (20 msgs); **New chat / Clear thread**
-- **Stable intent** during a conversation + **Reset context** action
-- Settings: **password field** for API key + **Test connection**
+**What’s new**
+- In‑page **selection toolbar** near your highlight with: **Explain / Summarize / Translate / Save**.
+- Clicking an action opens the panel (Assist), sends the selection as a prompt, or **saves to Notes**.
+- Toolbar auto-positions above or below selection; hides on click-away/scroll; disabled inside inputs.
+- Settings toggle: **Enable selection toolbar**.
 
-**Load**: chrome://extensions → Developer mode → Load unpacked
+**Still included from earlier phases**
+- Tabs: Assist / Notes / Tasks / Recent
+- Context-aware intent + chips; recent pages
+- Markdown, copy button, skeleton + retry, per-site thread persistence
+- Settings with provider, model, API key (masked), mock mode, test connection
 
-If Send/scroll ever freezes, it’s usually flex min-height — fixed in CSS.
+**Load**: chrome://extensions → Developer mode → Load unpacked → this folder

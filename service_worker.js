@@ -2,7 +2,7 @@
 const SETTINGS_KEY = 'aura_settings';
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Aura Phase 4 installed');
+  console.log('Aura Phase 5 installed');
 });
 
 async function ensureInjectedAndToggle(tabId) {
@@ -30,7 +30,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     try {
       if (msg?.type === 'aura:getSettings') {
         const data = await chrome.storage.local.get(SETTINGS_KEY);
-        sendResponse(data[SETTINGS_KEY] || { provider:'groq', apiKey:'', model:'llama3-8b-8192', mock:true });
+        sendResponse(data[SETTINGS_KEY] || { provider:'groq', apiKey:'', model:'llama3-8b-8192', mock:true, toolbar:true });
       } else if (msg?.type === 'aura:setSettings') {
         const current = (await chrome.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY] || {};
         const next = { ...current, ...(msg.payload || {}) };
@@ -43,6 +43,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       } else if (msg?.type === 'aura:testProvider') {
         const ok = await testProvider();
         sendResponse({ ok });
+      } else {
+        sendResponse({ ok:false, error:'Unknown message type' });
       }
     } catch (e) {
       console.error('Aura SW error:', e);
@@ -53,7 +55,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 async function getCfg() {
-  const defaults = { provider:'groq', apiKey:'', model:'llama3-8b-8192', mock:true };
+  const defaults = { provider:'groq', apiKey:'', model:'llama3-8b-8192', mock:true, toolbar:true };
   const { [SETTINGS_KEY]: settings = defaults } = await chrome.storage.local.get(SETTINGS_KEY);
   return { ...defaults, ...settings };
 }
