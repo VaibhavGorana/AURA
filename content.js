@@ -36,7 +36,7 @@
         <div class="aura-title">
           <span class="aura-dot"></span>
           <span class="title-text">Aura</span>
-          <span class="aura-phase">Phase 5</span>
+          <span class="aura-phase">Phase 6.2</span>
         </div>
         <div class="aura-mode" role="group" aria-label="Assistant mode"><button id="aura-mode-quick" class="seg active" data-mode="quick" title="Concise answers">Quick</button><button id="aura-mode-deep" class="seg" data-mode="deep" title="Structured answers">Deep</button></div><div class="aura-actions">
           <button id="aura-btn-settings" class="aura-icon-btn" aria-label="Settings">⚙</button>
