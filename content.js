@@ -38,7 +38,7 @@
           <span class="title-text">Aura</span>
           <span class="aura-phase">Phase 5</span>
         </div>
-        <div class="aura-actions">
+        <div class="aura-mode" role="group" aria-label="Assistant mode"><button id="aura-mode-quick" class="seg active" data-mode="quick" title="Concise answers">Quick</button><button id="aura-mode-deep" class="seg" data-mode="deep" title="Structured answers">Deep</button></div><div class="aura-actions">
           <button id="aura-btn-settings" class="aura-icon-btn" aria-label="Settings">⚙</button>
           <button id="aura-btn-close" class="aura-icon-btn" aria-label="Close">✕</button>
         </div>
@@ -91,7 +91,7 @@
           <div class="row"><textarea id="note-input" rows="3" placeholder="Write a note… (source link auto-attached)"></textarea></div>
           <div class="row">
             <button id="note-add" class="aura-btn primary">Add Note</button>
-            <button id="note-export" class="aura-btn">Export JSON</button>
+            <button id="note-export" class="aura-btn">Export JSON</button><button id="note-export-md" class="aura-btn">Export Markdown</button>
             <button id="note-clear" class="aura-btn">Clear All</button>
           </div>
         </div>
@@ -140,6 +140,15 @@
   const toolbarEl = root.querySelector('#aura-toolbar');
   const testBtn = root.querySelector('#aura-test');
   const saveSettingsBtn = root.querySelector('#aura-save-settings');
+  // Mode toggle
+  const modeQuickBtn = root.querySelector('#aura-mode-quick');
+  const modeDeepBtn = root.querySelector('#aura-mode-deep');
+  let currentMode = 'quick';
+  function updateModeUI(){
+    modeQuickBtn.classList.toggle('active', currentMode === 'quick');
+    modeDeepBtn.classList.toggle('active', currentMode === 'deep');
+  }
+
 
   const intentline = root.querySelector('#aura-intentline');
   const badges = root.querySelector('#aura-badges');
@@ -156,6 +165,7 @@
   const noteAddBtn = root.querySelector('#note-add');
   const noteAddSelBtn = root.querySelector('#note-add-selection');
   const noteExportBtn = root.querySelector('#note-export');
+  const noteExportMdBtn = root.querySelector('#note-export-md');
   const noteClearBtn = root.querySelector('#note-clear');
   const notesList = root.querySelector('#notes-list');
 
@@ -185,10 +195,21 @@
     panes.forEach(p => p.hidden = (p.dataset.tab !== name));
   }
   tabs.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+  modeQuickBtn.addEventListener('click', async () => {
+    currentMode = 'quick'; updateModeUI();
+    await chrome.runtime.sendMessage({ type:'aura:setSettings', payload: { mode: 'quick' } });
+  });
+  modeDeepBtn.addEventListener('click', async () => {
+    currentMode = 'deep'; updateModeUI();
+    await chrome.runtime.sendMessage({ type:'aura:setSettings', payload: { mode: 'deep' } });
+  });
+
 
   // Settings
   settingsBtn.addEventListener('click', async () => {
     if (settingsEl.hasAttribute('hidden')) {
+      // Sync settings (incl. mode)
+
       const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
       if (resp) {
         providerEl.value = resp.provider || 'groq';
@@ -386,7 +407,7 @@
     const sel = String(window.getSelection()||'').trim();
     const context = { url: location.href, title: document.title, selection: sel.slice(0, 1200) };
     try {
-      const res = await chrome.runtime.sendMessage({ type:'aura:chat', payload: { prompt, context } });
+      const res = await chrome.runtime.sendMessage({ type:'aura:chat', payload: { prompt, context, mode: currentMode } });
       if (!res?.ok) throw new Error(res?.error || 'Unknown error');
       replaceSkeleton(sk, 'assistant', res.result?.text || '(no response)');
       contextFrozen = true;
@@ -438,6 +459,21 @@
     const notes = await getStore(K_NOTES, []);
     const blob = new Blob([JSON.stringify(notes, null, 2)], { type:'application/json' });
     const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='aura_notes.json'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),500);
+  });
+  noteExportMdBtn.addEventListener('click', async ()=>{
+    const notes = await getStore(K_NOTES, []);
+    let md = `# Aura Notes\n\n`;
+    for (const n of notes){
+      const when = new Date(n.ts||Date.now()).toLocaleString();
+      const title = (n.source && n.source.title) ? n.source.title : 'Source';
+      const link = (n.source && n.source.url) ? n.source.url : '';
+      md += `## ${title}\n`;
+      if (link) md += `[${link}](${link})\n\n`;
+      md += `> ${String(n.text||'').replace(/\n/g,'\n> ')}\n\n— _${when}_\n\n`;
+    }
+    const blob = new Blob([md], { type:'text/markdown' });
+    const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='aura_notes.md'; a.click();
     setTimeout(()=>URL.revokeObjectURL(url),500);
   });
   noteClearBtn.addEventListener('click', async ()=>{ await setStore(K_NOTES, []); renderNotes(); });
@@ -591,6 +627,8 @@
 
   // Init
   (async () => {
+    try { const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' }); if (resp && resp.mode) { currentMode = (resp.mode === 'deep' ? 'deep' : 'quick'); updateModeUI(); } } catch {}
+
     await pushRecent();
     await loadThread();
     renderIntentAndChips(true);

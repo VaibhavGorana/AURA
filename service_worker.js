@@ -76,7 +76,7 @@ async function getCfg() {
     } catch (e) { return []; }
   }
 
-  const defaults = { provider:'groq', apiKey:'', model:'llama3-8b-8192', mock:true, toolbar:true };
+  const defaults = { provider:'groq', apiKey:'', model:'llama3-8b-8192', mock:true, toolbar:true, mode:'quick' };
   const { [SETTINGS_KEY]: settings = defaults } = await chrome.storage.local.get(SETTINGS_KEY);
   return { ...defaults, ...settings };
 }
