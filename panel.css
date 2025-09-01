@@ -81,3 +81,21 @@ code.inline{background:rgba(255,255,255,.06);border:1px solid var(--aura-border)
 .aura-mode .seg{border:0;padding:6px 10px;font-size:12px;color:var(--aura-text);background:transparent;cursor:pointer}
 .aura-mode .seg:hover{background:rgba(255,255,255,.06)}
 .aura-mode .seg.active{background:rgba(79,140,255,.18);}
+
+/* Transparent Settings Modal */
+#aura-modal[hidden]{display:none!important}
+#aura-modal{position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(6px);z-index:2147483647}
+.aura-dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,92vw);max-height:80vh;overflow:auto;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid var(--aura-border);border-radius:14px;box-shadow:var(--aura-shadow);padding:10px}
+.aura-dialog-head{display:flex;justify-content:space-between;align-items:center;padding:4px 6px 8px 6px;border-bottom:1px solid var(--aura-border);margin-bottom:8px}
+.aura-dialog-head .title{font-weight:600}
+/* Modal embeds the same .aura-settings grid */
+.aura-settings{padding:10px;border:none;background:transparent}
+/* Selection toolbar pin state */
+.aura-seltb.pinned{border-color:rgba(255,200,0,.5)}
+.aura-seltb .tb-btn.pin{opacity:.9}
+/* Minor responsive: shrink fonts on narrow */
+@media (max-width: 480px){
+  .aura-tabs .tab{font-size:11px;padding:5px 8px}
+  .chip{font-size:11px;padding:5px 10px}
+  .aura-icon-btn{padding:5px 8px}
+}

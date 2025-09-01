@@ -2,6 +2,16 @@
 const SETTINGS_KEY = 'aura_settings';
 
 chrome.runtime.onInstalled.addListener(() => {
+  try {
+    chrome.contextMenus.removeAll(() => {
+      chrome.contextMenus.create({ id:'aura', title:'Aura', contexts:['selection'] });
+      chrome.contextMenus.create({ id:'aura_explain', parentId:'aura', title:'Explain selection', contexts:['selection'] });
+      chrome.contextMenus.create({ id:'aura_summarize', parentId:'aura', title:'Summarize selection', contexts:['selection'] });
+      chrome.contextMenus.create({ id:'aura_translate', parentId:'aura', title:'Translate selection', contexts:['selection'] });
+      chrome.contextMenus.create({ id:'aura_save', parentId:'aura', title:'Save selection to Notes', contexts:['selection'] });
+    });
+  } catch (e) { console.warn('ContextMenus init failed', e); }
+
   console.log('Aura Phase 5 installed');
 });
 
@@ -122,3 +132,15 @@ async function callGroq({ apiKey, model, prompt, context = {}, mode }) {
   const text = data?.choices?.[0]?.message?.content?.trim() || '(no content)';
   return { provider:'groq', text };
 }
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (!info || !tab || !tab.id) return;
+  const sel = info.selectionText || '';
+  let act = null;
+  if (info.menuItemId === 'aura_explain') act = 'explain';
+  else if (info.menuItemId === 'aura_summarize') act = 'summarize';
+  else if (info.menuItemId === 'aura_translate') act = 'translate';
+  else if (info.menuItemId === 'aura_save') act = 'save';
+  if (!act) return;
+  try { await chrome.tabs.sendMessage(tab.id, { type:'aura:fromContextMenu', act, selection: sel }); } catch (e) { console.warn('CM send failed', e); }
+});
