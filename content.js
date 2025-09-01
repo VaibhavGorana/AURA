@@ -36,7 +36,7 @@
         <div class="aura-title">
           <span class="aura-dot"></span>
           <span class="title-text">Aura</span>
-          <span class="aura-phase">Phase 6.2</span>
+          <span class="aura-phase">Phase 6.3</span>
         </div>
         <div class="aura-mode" role="group" aria-label="Assistant mode"><button id="aura-mode-quick" class="seg active" data-mode="quick" title="Concise answers">Quick</button><button id="aura-mode-deep" class="seg" data-mode="deep" title="Structured answers">Deep</button></div><div class="aura-actions">
           <button id="aura-btn-settings" class="aura-icon-btn" aria-label="Settings">⚙</button>
@@ -218,14 +218,14 @@
         mockEl.checked = !!resp.mock;
         toolbarEl.checked = resp.toolbar !== false;
       }
-      settingsEl.removeAttribute('hidden');
-    } else settingsEl.setAttribute('hidden','');
+      modalEl.removeAttribute('hidden');
+    } else modalEl.setAttribute('hidden','');
   });
   saveSettingsBtn.addEventListener('click', async () => {
     const payload = { provider: providerEl.value, model: modelEl.value || 'llama3-8b-8192', apiKey: apiKeyEl.value.trim(), mock: mockEl.checked, toolbar: toolbarEl.checked };
     const res = await chrome.runtime.sendMessage({ type:'aura:setSettings', payload });
     toast(res?.ok ? 'Settings saved' : 'Failed to save settings');
-    if (res?.ok) settingsEl.setAttribute('hidden','');
+    if (res?.ok) modalEl.setAttribute('hidden','');
   });
   testBtn.addEventListener('click', async () => {
     const ok = await chrome.runtime.sendMessage({ type:'aura:testProvider' });
@@ -642,3 +642,8 @@
     setTimeout(()=>t.classList.add('show'),10); setTimeout(()=>{t.classList.remove('show'); t.remove();},1800);
   }
 })();
+
+// Modal close behavior (once)
+modalCloseBtn.addEventListener('click', ()=> modalEl.setAttribute('hidden',''));
+modalEl.addEventListener('mousedown', (e)=> { if (e.target === modalEl) modalEl.setAttribute('hidden',''); });
+document.addEventListener('keydown', (e)=> { if (!modalEl.hasAttribute('hidden') && e.key === 'Escape') modalEl.setAttribute('hidden',''); });

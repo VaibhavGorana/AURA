@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Aura \u2013 In\u2011Page Assistant (Phase 6.2: Modal + Context Menu)",
+  "name": "Aura \u2013 In\u2011Page Assistant (Phase 6.3: Modal + Context Menu + Fix)",
   "description": "Adds in\u2011page selection toolbar (Explain / Summarize / Translate / Save) with panel integration.",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "icons": {
     "16": "assets/icon16.png",
     "48": "assets/icon48.png",
