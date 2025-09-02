@@ -36,9 +36,13 @@
         <div class="aura-title">
           <span class="aura-dot"></span>
           <span class="title-text">Aura</span>
-          <span class="aura-phase">Phase 6.3</span>
+          <span class="aura-phase">Phase 6.4</span>
         </div>
-        <div class="aura-mode" role="group" aria-label="Assistant mode"><button id="aura-mode-quick" class="seg active" data-mode="quick" title="Concise answers">Quick</button><button id="aura-mode-deep" class="seg" data-mode="deep" title="Structured answers">Deep</button></div><div class="aura-actions">
+        <div class="aura-mode" role="group" aria-label="Assistant mode">
+          <button id="aura-mode-quick" class="seg active" data-mode="quick" title="Concise answers">Quick</button>
+          <button id="aura-mode-deep" class="seg" data-mode="deep" title="Structured answers">Deep</button>
+        </div>
+        <div class="aura-actions">
           <button id="aura-btn-settings" class="aura-icon-btn" aria-label="Settings">⚙</button>
           <button id="aura-btn-close" class="aura-icon-btn" aria-label="Close">✕</button>
         </div>
@@ -49,21 +53,6 @@
         <button class="tab" data-tab="notes" role="tab" aria-selected="false">Notes</button>
         <button class="tab" data-tab="tasks" role="tab" aria-selected="false">Tasks</button>
         <button class="tab" data-tab="recent" role="tab" aria-selected="false">Recent</button>
-      </div>
-
-      <div id="aura-settings" class="aura-settings" hidden>
-        <div class="row"><label>Provider</label>
-          <select id="aura-provider"><option value="groq">Groq (OpenAI-compatible)</option></select>
-        </div>
-        <div class="row"><label>Model</label><input id="aura-model" placeholder="llama3-8b-8192"/></div>
-        <div class="row"><label>API Key</label><input id="aura-apikey" type="password" placeholder="sk-..." /></div>
-        <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-mock" checked/> Use mock responses</label></div>
-        <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-toolbar" checked/> Enable selection toolbar</label></div>
-        <div class="row"><label></label>
-          <button id="aura-test" class="aura-btn">Test connection</button>
-          <button id="aura-save-settings" class="aura-btn primary">Save</button>
-        </div>
-        <div class="hint">Settings stay on your device. Don’t paste secrets on shared machines.</div>
       </div>
 
       <section class="tabpane" id="pane-assist" data-tab="assist">
@@ -91,7 +80,8 @@
           <div class="row"><textarea id="note-input" rows="3" placeholder="Write a note… (source link auto-attached)"></textarea></div>
           <div class="row">
             <button id="note-add" class="aura-btn primary">Add Note</button>
-            <button id="note-export" class="aura-btn">Export JSON</button><button id="note-export-md" class="aura-btn">Export Markdown</button>
+            <button id="note-export" class="aura-btn">Export JSON</button>
+            <button id="note-export-md" class="aura-btn">Export Markdown</button>
             <button id="note-clear" class="aura-btn">Clear All</button>
           </div>
         </div>
@@ -115,16 +105,41 @@
       </section>
     </div>
 
+    <!-- Transparent Modal -->
+    <div id="aura-modal" class="aura-modal" hidden>
+      <div class="aura-dialog">
+        <div class="aura-dialog-head">
+          <div class="title">Settings</div>
+          <button id="aura-modal-close" class="aura-icon-btn">✕</button>
+        </div>
+        <div id="aura-settings" class="aura-settings">
+          <div class="row"><label>Provider</label>
+            <select id="aura-provider"><option value="groq">Groq (OpenAI-compatible)</option></select>
+          </div>
+          <div class="row"><label>Model</label><input id="aura-model" placeholder="llama3-8b-8192"/></div>
+          <div class="row"><label>API Key</label><input id="aura-apikey" type="password" placeholder="sk-..." /></div>
+          <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-mock" checked/> Use mock responses</label></div>
+          <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-toolbar" checked/> Enable selection toolbar</label></div>
+          <div class="row"><label></label>
+            <button id="aura-test" class="aura-btn">Test connection</button>
+            <button id="aura-save-settings" class="aura-btn primary">Save</button>
+          </div>
+          <div class="hint">Settings stay on your device. Don’t paste secrets on shared machines.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Selection Toolbar -->
     <div id="aura-seltb" class="aura-seltb hidden" role="toolbar" aria-label="Selection actions">
       <button class="tb-btn" data-act="explain" title="Explain">Explain</button>
       <button class="tb-btn" data-act="summarize" title="Summarize">Summarize</button>
       <button class="tb-btn" data-act="translate" title="Translate">Translate</button>
       <button class="tb-btn" data-act="save" title="Save to Notes">Save</button>
+      <button class="tb-btn pin" data-act="pin" title="Pin toolbar">📌</button>
     </div>
   `;
 
-  // Core elements
+  // ---- Elements ----
   const bubble = root.querySelector('#aura-bubble');
   const panel = root.querySelector('#aura-panel');
   const closeBtn = root.querySelector('#aura-btn-close');
@@ -132,6 +147,8 @@
   const panes = Array.from(root.querySelectorAll('.tabpane'));
 
   const settingsBtn = root.querySelector('#aura-btn-settings');
+  const modalEl = root.querySelector('#aura-modal');
+  const modalCloseBtn = root.querySelector('#aura-modal-close');
   const settingsEl = root.querySelector('#aura-settings');
   const providerEl = root.querySelector('#aura-provider');
   const modelEl = root.querySelector('#aura-model');
@@ -140,15 +157,6 @@
   const toolbarEl = root.querySelector('#aura-toolbar');
   const testBtn = root.querySelector('#aura-test');
   const saveSettingsBtn = root.querySelector('#aura-save-settings');
-  // Mode toggle
-  const modeQuickBtn = root.querySelector('#aura-mode-quick');
-  const modeDeepBtn = root.querySelector('#aura-mode-deep');
-  let currentMode = 'quick';
-  function updateModeUI(){
-    modeQuickBtn.classList.toggle('active', currentMode === 'quick');
-    modeDeepBtn.classList.toggle('active', currentMode === 'deep');
-  }
-
 
   const intentline = root.querySelector('#aura-intentline');
   const badges = root.querySelector('#aura-badges');
@@ -179,37 +187,31 @@
 
   const selTb = root.querySelector('#aura-seltb');
 
-  // Panel toggle
+  // ---- Panel toggle ----
   function togglePanel(force){ panel.dataset.open = String(force ?? (panel.dataset.open !== 'true')); }
   bubble.addEventListener('click', () => togglePanel(true));
   closeBtn.addEventListener('click', () => togglePanel(false));
-  try { chrome.runtime.onMessage.addListener((msg)=>{ if (msg?.type==='aura:toggle') togglePanel(); }); } catch {}
+  try { chrome.runtime.onMessage.addListener((msg)=>{
+    if (msg?.type==='aura:toggle') togglePanel();
+    if (msg?.type==='aura:fromContextMenu') {
+      const sel = (msg.selection||'').trim(); if (!sel) return;
+      togglePanel(true); showTab('assist');
+      const templates = { explain: `Explain this selection in simple terms:\n\n${sel}`, summarize: `Summarize this selection in 3–5 bullets:\n\n${sel}`, translate: `Translate this into English:\n\n${sel}` };
+      if (msg.act === 'save') { (async ()=>{ const notes = await getStore(K_NOTES, []); notes.unshift({ text: sel, source:{ url: location.href, title: document.title }, ts: now() }); await setStore(K_NOTES, notes); toast('Saved to Notes'); })(); }
+      else handleSend(templates[msg.act] || sel);
+    }
+  }); } catch {}
 
-  // Tabs
+  // ---- Tabs ----
   function showTab(name){
-    tabs.forEach(b => {
-      const active = b.dataset.tab === name;
-      b.classList.toggle('active', active);
-      b.setAttribute('aria-selected', String(active));
-    });
+    tabs.forEach(b => { const active = b.dataset.tab === name; b.classList.toggle('active', active); b.setAttribute('aria-selected', String(active)); });
     panes.forEach(p => p.hidden = (p.dataset.tab !== name));
   }
   tabs.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
-  modeQuickBtn.addEventListener('click', async () => {
-    currentMode = 'quick'; updateModeUI();
-    await chrome.runtime.sendMessage({ type:'aura:setSettings', payload: { mode: 'quick' } });
-  });
-  modeDeepBtn.addEventListener('click', async () => {
-    currentMode = 'deep'; updateModeUI();
-    await chrome.runtime.sendMessage({ type:'aura:setSettings', payload: { mode: 'deep' } });
-  });
 
-
-  // Settings
-  settingsBtn.addEventListener('click', async () => {
-    if (settingsEl.hasAttribute('hidden')) {
-      // Sync settings (incl. mode)
-
+  // ---- Settings modal ----
+  function openSettingsModal(){
+    (async () => {
       const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
       if (resp) {
         providerEl.value = resp.provider || 'groq';
@@ -217,22 +219,29 @@
         apiKeyEl.value = resp.apiKey || '';
         mockEl.checked = !!resp.mock;
         toolbarEl.checked = resp.toolbar !== false;
+        currentMode = (resp.mode === 'deep' ? 'deep' : 'quick'); updateModeUI();
       }
       modalEl.removeAttribute('hidden');
-    } else modalEl.setAttribute('hidden','');
-  });
+    })();
+  }
+  function closeSettingsModal(){ modalEl.setAttribute('hidden',''); }
+  settingsBtn.addEventListener('click', openSettingsModal);
+  modalCloseBtn.addEventListener('click', closeSettingsModal);
+  modalEl.addEventListener('mousedown', (e)=> { if (e.target === modalEl) closeSettingsModal(); });
+  document.addEventListener('keydown', (e)=> { if (!modalEl.hasAttribute('hidden') && e.key === 'Escape') closeSettingsModal(); });
+
   saveSettingsBtn.addEventListener('click', async () => {
-    const payload = { provider: providerEl.value, model: modelEl.value || 'llama3-8b-8192', apiKey: apiKeyEl.value.trim(), mock: mockEl.checked, toolbar: toolbarEl.checked };
+    const payload = { provider: providerEl.value, model: modelEl.value || 'llama3-8b-8192', apiKey: apiKeyEl.value.trim(), mock: mockEl.checked, toolbar: toolbarEl.checked, mode: currentMode };
     const res = await chrome.runtime.sendMessage({ type:'aura:setSettings', payload });
     toast(res?.ok ? 'Settings saved' : 'Failed to save settings');
-    if (res?.ok) modalEl.setAttribute('hidden','');
+    if (res?.ok) closeSettingsModal();
   });
   testBtn.addEventListener('click', async () => {
     const ok = await chrome.runtime.sendMessage({ type:'aura:testProvider' });
     toast(ok?.ok ? 'Provider OK' : 'Provider check failed (enable key & disable Mock)');
   });
 
-  // Context (same as Phase 4)
+  // ---- Context detection + chips ----
   function estReadingTime(text){
     const words = (text || '').trim().split(/\s+/).filter(Boolean).length;
     if (!words) return null;
@@ -277,7 +286,7 @@
       { label:'Key moments', template:`List likely key moments or chapters for this video topic.` }
     ]};
     if (isGitHub) {
-      const parts = path.split('/').filter(Boolean);
+      const parts = path.split('/').').split('/').filter(Boolean);
       const repo = parts.length >= 2 ? `${parts[0]}/${parts[1]}` : title || host;
       return { intent:`It looks like you’re viewing a code repository — “${repo}”. Want a README or feature overview?`, badges:[`👩‍💻 ${host}`], chips:[
         { label:'Explain repo', template:`Give a high-level overview of the ${repo} repository based on its README and common patterns.` },
@@ -306,7 +315,7 @@
   let cachedContext = computeContext();
   let smartChipsLoaded = false;
   async function fetchAndAppendSmartChips(ctx){
-    if (smartChipsLoaded) return; smartChipsLoaded = true;
+    smartChipsLoaded = false;
     try {
       const payload = { context: { url: location.href, title: document.title, host: location.hostname, page: ctx.intent, badges: ctx.badges } };
       const resp = await chrome.runtime.sendMessage({ type:'aura:smartChips', payload });
@@ -318,7 +327,8 @@
         b.addEventListener('click', ()=>{ input.value = ch.template || ''; input.focus(); });
         chipsEl.appendChild(b);
       }
-    } catch {}
+      smartChipsLoaded = true;
+    } catch { smartChipsLoaded = true; }
   }
   function renderIntentAndChips(force=false){
     if (!force && contextFrozen) return;
@@ -326,12 +336,11 @@
     intentline.textContent = ctx.intent;
     badges.innerHTML = ''; (ctx.badges||[]).forEach(b => { const s=document.createElement('span'); s.className='badge'; s.textContent=b; badges.appendChild(s); });
     chipsEl.innerHTML = ''; (ctx.chips||[]).forEach(ch => { const b=document.createElement('button'); b.className='chip'; b.textContent=ch.label; b.addEventListener('click', ()=>{ input.value = ch.template; input.focus(); }); chipsEl.appendChild(b); });
-    smartChipsLoaded = false; fetchAndAppendSmartChips(ctx);
+    fetchAndAppendSmartChips(ctx);
   }
-  renderIntentAndChips(true);
-  resetCtxBtn.addEventListener('click', ()=>{ contextFrozen=false; renderIntentAndChips(true); smartChipsLoaded=false; });
+  resetCtxBtn.addEventListener('click', ()=>{ contextFrozen=false; renderIntentAndChips(true); });
 
-  // recent tracking
+  // recent
   async function pushRecent(){
     const rec = await getStore(K_RECENTS, []);
     const item = { url: location.href, title: document.title, ts: now() };
@@ -396,7 +405,17 @@
     thread.appendChild(e); thread.scrollTop = thread.scrollHeight;
   }
 
-  // chat
+  // chat + mode
+  const modeQuickBtn = root.querySelector('#aura-mode-quick');
+  const modeDeepBtn = root.querySelector('#aura-mode-deep');
+  let currentMode = 'quick';
+  function updateModeUI(){
+    modeQuickBtn.classList.toggle('active', currentMode === 'quick');
+    modeDeepBtn.classList.toggle('active', currentMode === 'deep');
+  }
+  modeQuickBtn.addEventListener('click', async () => { currentMode = 'quick'; updateModeUI(); await chrome.runtime.sendMessage({ type:'aura:setSettings', payload: { mode: 'quick' } }); });
+  modeDeepBtn.addEventListener('click', async () => { currentMode = 'deep'; updateModeUI(); await chrome.runtime.sendMessage({ type:'aura:setSettings', payload: { mode: 'deep' } }); });
+
   let sending = false;
   async function handleSend(forcePrompt){
     if (sending) return;
@@ -468,15 +487,12 @@
       const when = new Date(n.ts||Date.now()).toLocaleString();
       const title = (n.source && n.source.title) ? n.source.title : 'Source';
       const link = (n.source && n.source.url) ? n.source.url : '';
-      md += `## ${title}\n`;
-      if (link) md += `[${link}](${link})\n\n`;
-      md += `> ${String(n.text||'').replace(/\n/g,'\n> ')}\n\n— _${when}_\n\n`;
+      md += `## ${title}\n`; if (link) md += `[${link}](${link})\n\n`; md += `> ${String(n.text||'').replace(/\n/g,'\n> ')}\n\n— _${when}_\n\n`;
     }
     const blob = new Blob([md], { type:'text/markdown' });
     const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='aura_notes.md'; a.click();
     setTimeout(()=>URL.revokeObjectURL(url),500);
   });
-  noteClearBtn.addEventListener('click', async ()=>{ await setStore(K_NOTES, []); renderNotes(); });
 
   // Tasks
   function taskRow(t, idx){
@@ -515,7 +531,7 @@
   // Recent
   function recentRow(r){
     const li=document.createElement('li'); const t=new Date(r.ts||now()).toLocaleString();
-    li.innerHTML = `<a href="${esc(r.url)}" target="_blank" class="recent-link">${esc(r.title || r.url)}</a> · <span class="muted">${t}</span>`;
+    li.innerHTML = `<a href="${escapeHtml(r.url)}" target="_blank" class="recent-link">${escapeHtml(r.title || r.url)}</a> · <span class="muted">${t}</span>`;
     return li;
   }
   async function renderRecents(){
@@ -526,7 +542,7 @@
   }
   recentRefreshBtn.addEventListener('click', renderRecents);
 
-  // ---------- Phase 5: Selection Toolbar ----------
+  // ---------- Selection Toolbar ----------
   function withinAura(node){
     for (let n = node; n; n = n.parentNode) {
       if (n === root) return true;
@@ -557,17 +573,14 @@
     const node = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;
     return node ? node.getBoundingClientRect() : null;
   }
-  let selTimer = null;
   let toolbarEnabled = true;
+  let toolbarPinned = false;
   async function refreshToolbarSetting(){
-    try {
-      const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
-      toolbarEnabled = !resp || resp.toolbar !== false;
-    } catch { toolbarEnabled = true; }
+    try { const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' }); toolbarEnabled = !resp || resp.toolbar !== false; } catch { toolbarEnabled = true; }
   }
   refreshToolbarSetting();
 
-  function hideSelTb(){ selTb.classList.add('hidden'); }
+  function hideSelTb(){ if (!toolbarPinned) selTb.classList.add('hidden'); }
   function positionSelTb(){
     if (!toolbarEnabled) { hideSelTb(); return; }
     const sel = window.getSelection();
@@ -581,54 +594,41 @@
     if (!rect) { hideSelTb(); return; }
     const tb = selTb;
     const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
-    const vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
     tb.classList.remove('hidden');
-    const tbWidth = tb.offsetWidth || 220;
+    const tbWidth = tb.offsetWidth || 240;
     const tbHeight = tb.offsetHeight || 38;
     let left = rect.left + rect.width/2 - tbWidth/2;
     left = Math.max(8, Math.min(vw - tbWidth - 8, left));
     let top = rect.top - tbHeight - 8;
     if (top < 8) top = rect.bottom + 8;
     tb.style.left = `${Math.round(left)}px`;
-    tb.style.top = `${Math.round(top)}px`;
+    tb.style.top = `${Math.round(top + window.scrollY)}px`;
   }
 
-  document.addEventListener('selectionchange', () => {
-    clearTimeout(selTimer);
-    selTimer = setTimeout(positionSelTb, 120);
-  }, { passive: true });
+  document.addEventListener('selectionchange', () => { positionSelTb(); }, { passive: true });
   window.addEventListener('scroll', () => { if (!selTb.classList.contains('hidden')) positionSelTb(); }, { passive: true });
   window.addEventListener('resize', () => { if (!selTb.classList.contains('hidden')) positionSelTb(); }, { passive: true });
-  document.addEventListener('mousedown', (e)=> {
-    if (e.target.closest('#aura-seltb')) return;
-    hideSelTb();
-  }, true);
+  document.addEventListener('mousedown', (e)=> { if (!e.target.closest('#aura-seltb')) hideSelTb(); }, true);
 
   selTb.addEventListener('click', async (e) => {
     const btn = e.target.closest('.tb-btn'); if (!btn) return;
-    const text = getSelectionText(); if (!text) { hideSelTb(); return; }
-    const act = btn.dataset.act;
+    const text = getSelectionText(); const act = btn.dataset.act;
+    if (act === 'pin') { toolbarPinned = !toolbarPinned; selTb.classList.toggle('pinned', toolbarPinned); return; }
+    if (!text) { hideSelTb(); return; }
     hideSelTb();
     togglePanel(true); showTab('assist'); input.focus();
     if (act === 'save') {
       const notes = await getStore(K_NOTES, []);
       notes.unshift({ text, source:{ url: location.href, title: document.title }, ts: now() });
-      await setStore(K_NOTES, notes);
-      toast('Saved to Notes');
-      return;
+      await setStore(K_NOTES, notes); toast('Saved to Notes'); return;
     }
-    const templates = {
-      explain: `Explain this selection in simple terms:\n\n${text}`,
-      summarize: `Summarize this selection in 3–5 bullets:\n\n${text}`,
-      translate: `Translate this into English:\n\n${text}`
-    };
+    const templates = { explain: `Explain this selection in simple terms:\n\n${text}`, summarize: `Summarize this selection in 3–5 bullets:\n\n${text}`, translate: `Translate this into English:\n\n${text}` };
     handleSend(templates[act] || text);
   });
 
-  // Init
+  // ---- Init ----
   (async () => {
     try { const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' }); if (resp && resp.mode) { currentMode = (resp.mode === 'deep' ? 'deep' : 'quick'); updateModeUI(); } } catch {}
-
     await pushRecent();
     await loadThread();
     renderIntentAndChips(true);
@@ -642,8 +642,3 @@
     setTimeout(()=>t.classList.add('show'),10); setTimeout(()=>{t.classList.remove('show'); t.remove();},1800);
   }
 })();
-
-// Modal close behavior (once)
-modalCloseBtn.addEventListener('click', ()=> modalEl.setAttribute('hidden',''));
-modalEl.addEventListener('mousedown', (e)=> { if (e.target === modalEl) modalEl.setAttribute('hidden',''); });
-document.addEventListener('keydown', (e)=> { if (!modalEl.hasAttribute('hidden') && e.key === 'Escape') modalEl.setAttribute('hidden',''); });

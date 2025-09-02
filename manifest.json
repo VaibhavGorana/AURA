@@ -1,18 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "Aura \u2013 In\u2011Page Assistant (Phase 6.3: Modal + Context Menu + Fix)",
-  "description": "Adds in\u2011page selection toolbar (Explain / Summarize / Translate / Save) with panel integration.",
-  "version": "0.6.3",
+  "name": "Aura \u2013 In\u2011Page Assistant (Phase 6.4: Modal + Context Menu + Fix)",
+  "version": "0.6.4",
+  "description": "True modal settings, context menu actions, AI smart chips, and stability fixes.",
   "icons": {
     "16": "assets/icon16.png",
     "48": "assets/icon48.png",
     "128": "assets/icon128.png"
   },
   "permissions": [
+    "storage",
     "activeTab",
-    "contextMenus",
     "scripting",
-    "storage"
+    "contextMenus"
   ],
   "host_permissions": [
     "<all_urls>"

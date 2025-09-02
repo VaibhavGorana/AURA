@@ -11,7 +11,7 @@ transition:transform .15s ease, filter .15s ease}
 #aura-panel{position:fixed;top:0;right:0;width:clamp(320px,25vw,420px);height:100vh;background:linear-gradient(180deg,var(--aura-surface),#0e1219 40%,#0b0f16 100%);
 color:var(--aura-text);border-left:1px solid var(--aura-border);transform:translateX(100%);transition:transform .18s ease;z-index:2147483647;display:flex;flex-direction:column;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;box-shadow:var(--aura-shadow)}
 #aura-panel[data-open="true"]{transform:translateX(0%)}
-.aura-header{position:sticky;top:0;display:grid;grid-template-columns:1fr auto;align-items:center;padding:12px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,0));border-bottom:1px solid var(--aura-border)}
+.aura-header{position:sticky;top:0;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;padding:12px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,0));border-bottom:1px solid var(--aura-border)}
 .aura-title{font-weight:650;letter-spacing:.2px;display:inline-flex;align-items:center;gap:8px}
 .aura-dot{width:10px;height:10px;border-radius:50%;display:inline-block;background:radial-gradient(circle at 35% 35%,var(--aura-accent-2),var(--aura-accent));box-shadow:0 0 0 3px rgba(79,140,255,.15)}
 .aura-phase{opacity:.6;font-weight:500;font-size:12px}
@@ -19,15 +19,18 @@ color:var(--aura-text);border-left:1px solid var(--aura-border);transform:transl
 .aura-icon-btn{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:10px;padding:6px 10px;cursor:pointer}
 .aura-icon-btn:hover{background:var(--aura-chip-hover)}
 .aura-icon-btn.sm{padding:4px 8px;font-size:12px;border-radius:8px}
+.aura-mode{display:inline-flex;gap:0;margin-right:8px;border:1px solid var(--aura-border);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.04)}
+.aura-mode .seg{border:0;padding:6px 10px;font-size:12px;color:var(--aura-text);background:transparent;cursor:pointer}
+.aura-mode .seg:hover{background:rgba(255,255,255,.06)}
+.aura-mode .seg.active{background:rgba(79,140,255,.18);}
 .aura-tabs{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--aura-border);position:sticky;top:48px;background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));z-index:2}
 .aura-tabs .tab{background:transparent;border:1px solid transparent;color:var(--aura-text);padding:6px 10px;border-radius:9px;cursor:pointer;font-size:12px}
 .aura-tabs .tab:hover{background:rgba(255,255,255,.04);border-color:var(--aura-border)}
 .aura-tabs .tab.active{background:rgba(79,140,255,.18);border-color:rgba(79,140,255,.35)}
 .tabpane{display:flex;flex-direction:column;height:100%;min-height:0}
 .tabpane[hidden]{display:none!important}
-.aura-settings{padding:10px 12px;border-bottom:1px solid var(--aura-border);display:grid;grid-template-columns:1fr;gap:8px}
+.aura-settings{padding:10px;border:none;background:transparent}
 .aura-settings .row{display:grid;grid-template-columns:140px 1fr;gap:8px;align-items:center}
-#aura-settings[hidden]{display:none!important}
 .aura-settings input,.aura-settings select{background:var(--aura-input);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:10px;padding:8px 10px;outline:none}
 .aura-settings .hint{opacity:.6;font-size:12px}
 .aura-btn{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:13px}
@@ -69,33 +72,16 @@ color:var(--aura-text);border-left:1px solid var(--aura-border);transform:transl
 .aura-toast.show{transform:translateX(-50%) translateY(0px);opacity:1}
 pre.code{background:#0b0f16;border:1px solid var(--aura-border);padding:10px;border-radius:10px;overflow:auto}
 code.inline{background:rgba(255,255,255,.06);border:1px solid var(--aura-border);padding:1px 4px;border-radius:6px}
-
-/* Selection toolbar */
-.aura-seltb{position:fixed;left:0;top:0;display:flex;gap:6px;padding:6px 8px;background:rgba(17,20,27,.96);border:1px solid var(--aura-border);border-radius:10px;box-shadow:var(--aura-shadow);z-index:2147483647}
-.aura-seltb.hidden{display:none}
-.aura-seltb .tb-btn{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
-.aura-seltb .tb-btn:hover{background:var(--aura-chip-hover)}
-
-/* Mode segmented control */
-.aura-mode{display:inline-flex;gap:0;margin-right:8px;border:1px solid var(--aura-border);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.04)}
-.aura-mode .seg{border:0;padding:6px 10px;font-size:12px;color:var(--aura-text);background:transparent;cursor:pointer}
-.aura-mode .seg:hover{background:rgba(255,255,255,.06)}
-.aura-mode .seg.active{background:rgba(79,140,255,.18);}
-
-/* Transparent Settings Modal */
+/* Modal */
 #aura-modal[hidden]{display:none!important}
 #aura-modal{position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(6px);z-index:2147483647}
 .aura-dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,92vw);max-height:80vh;overflow:auto;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid var(--aura-border);border-radius:14px;box-shadow:var(--aura-shadow);padding:10px}
 .aura-dialog-head{display:flex;justify-content:space-between;align-items:center;padding:4px 6px 8px 6px;border-bottom:1px solid var(--aura-border);margin-bottom:8px}
 .aura-dialog-head .title{font-weight:600}
-/* Modal embeds the same .aura-settings grid */
-.aura-settings{padding:10px;border:none;background:transparent}
-/* Selection toolbar pin state */
+/* Selection toolbar */
+.aura-seltb{position:absolute;left:0;top:0;display:flex;gap:6px;padding:6px 8px;background:rgba(17,20,27,.96);border:1px solid var(--aura-border);border-radius:10px;box-shadow:var(--aura-shadow);z-index:2147483647}
+.aura-seltb.hidden{display:none}
 .aura-seltb.pinned{border-color:rgba(255,200,0,.5)}
+.aura-seltb .tb-btn{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+.aura-seltb .tb-btn:hover{background:var(--aura-chip-hover)}
 .aura-seltb .tb-btn.pin{opacity:.9}
-/* Minor responsive: shrink fonts on narrow */
-@media (max-width: 480px){
-  .aura-tabs .tab{font-size:11px;padding:5px 8px}
-  .chip{font-size:11px;padding:5px 10px}
-  .aura-icon-btn{padding:5px 8px}
-}
