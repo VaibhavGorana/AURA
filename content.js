@@ -62,7 +62,7 @@
           <div class="intent-actions">
             <button id="aura-newchat" class="linklike">New chat</button>
             <button id="aura-clear" class="linklike">Clear thread</button>
-            <button id="aura-resetctx" class="linklike">Reset context</button>
+            <button id="aura-resetctx" class="linklike">Reset context</button><button id="aura-morechips" class="linklike">✨ More suggestions</button>
           </div>
         </div>
         <div class="aura-chips" id="aura-chips"></div>
@@ -102,11 +102,8 @@
       <section class="tabpane" id="pane-recent" data-tab="recent" hidden>
         <div class="pane-section"><div class="row"><button id="recent-refresh" class="aura-btn">Refresh</button></div></div>
         <ul id="recent-list" class="list"></ul>
-      </section>
-    </div>
-
-    <!-- Transparent Modal -->
-    <div id="aura-modal" class="aura-modal" hidden>
+      <!-- Panel-local Transparent Modal -->
+    <div id="aura-modal-panel" class="aura-modal" hidden>
       <div class="aura-dialog">
         <div class="aura-dialog-head">
           <div class="title">Settings</div>
@@ -119,6 +116,7 @@
           <div class="row"><label>Model</label><input id="aura-model" placeholder="llama3-8b-8192"/></div>
           <div class="row"><label>API Key</label><input id="aura-apikey" type="password" placeholder="sk-..." /></div>
           <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-mock" checked/> Use mock responses</label></div>
+          <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-debug"/> Show debug logs</label></div>
           <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-toolbar" checked/> Enable selection toolbar</label></div>
           <div class="row"><label></label>
             <button id="aura-test" class="aura-btn">Test connection</button>
@@ -127,6 +125,9 @@
           <div class="hint">Settings stay on your device. Don’t paste secrets on shared machines.</div>
         </div>
       </div>
+    </div>
+
+    </section>
     </div>
 
     <!-- Selection Toolbar -->
@@ -147,7 +148,7 @@
   const panes = Array.from(root.querySelectorAll('.tabpane'));
 
   const settingsBtn = root.querySelector('#aura-btn-settings');
-  const modalEl = root.querySelector('#aura-modal');
+  const modalEl = root.querySelector('#aura-modal-panel');
   const modalCloseBtn = root.querySelector('#aura-modal-close');
   const settingsEl = root.querySelector('#aura-settings');
   const providerEl = root.querySelector('#aura-provider');
@@ -155,6 +156,7 @@
   const apiKeyEl = root.querySelector('#aura-apikey');
   const mockEl = root.querySelector('#aura-mock');
   const toolbarEl = root.querySelector('#aura-toolbar');
+  const debugEl = root.querySelector('#aura-debug');
   const testBtn = root.querySelector('#aura-test');
   const saveSettingsBtn = root.querySelector('#aura-save-settings');
 
@@ -164,6 +166,9 @@
   const newChatBtn = root.querySelector('#aura-newchat');
   const clearBtn = root.querySelector('#aura-clear');
   const resetCtxBtn = root.querySelector('#aura-resetctx');
+  const moreChipsBtn = root.querySelector('#aura-morechips');
+  const smartCache = {}; // host-> {ts:number, chips:[]}
+
 
   const thread = root.querySelector('#aura-thread');
   const input = root.querySelector('#aura-input');
@@ -219,6 +224,7 @@
         apiKeyEl.value = resp.apiKey || '';
         mockEl.checked = !!resp.mock;
         toolbarEl.checked = resp.toolbar !== false;
+        debugEl.checked = !!resp.debug;
         currentMode = (resp.mode === 'deep' ? 'deep' : 'quick'); updateModeUI();
       }
       modalEl.removeAttribute('hidden');
@@ -231,7 +237,7 @@
   document.addEventListener('keydown', (e)=> { if (!modalEl.hasAttribute('hidden') && e.key === 'Escape') closeSettingsModal(); });
 
   saveSettingsBtn.addEventListener('click', async () => {
-    const payload = { provider: providerEl.value, model: modelEl.value || 'llama3-8b-8192', apiKey: apiKeyEl.value.trim(), mock: mockEl.checked, toolbar: toolbarEl.checked, mode: currentMode };
+    const payload = { provider: providerEl.value, model: modelEl.value || 'llama3-8b-8192', apiKey: apiKeyEl.value.trim(), mock: mockEl.checked, toolbar: toolbarEl.checked, debug: debugEl.checked, mode: currentMode };
     const res = await chrome.runtime.sendMessage({ type:'aura:setSettings', payload });
     toast(res?.ok ? 'Settings saved' : 'Failed to save settings');
     if (res?.ok) closeSettingsModal();
@@ -314,12 +320,20 @@
   let contextFrozen = false;
   let cachedContext = computeContext();
   let smartChipsLoaded = false;
-  async function fetchAndAppendSmartChips(ctx){
+  async function fetchAndAppendSmartChips(ctx, force=false){
     smartChipsLoaded = false;
     try {
-      const payload = { context: { url: location.href, title: document.title, host: location.hostname, page: ctx.intent, badges: ctx.badges } };
-      const resp = await chrome.runtime.sendMessage({ type:'aura:smartChips', payload });
-      const list = resp?.result || [];
+      const key = location.hostname;
+      const nowTs = Date.now();
+      const cached = smartCache[key];
+      let list = [];
+      if (!force && cached && (nowTs - cached.ts) < 120000) { list = cached.chips; }
+      else {
+        const payload = { context: { url: location.href, title: document.title, host: location.hostname, page: ctx.intent, badges: ctx.badges } };
+        const resp = await chrome.runtime.sendMessage({ type:'aura:smartChips', payload });
+        list = resp?.result || [];
+        smartCache[key] = { ts: nowTs, chips: list };
+      }
       for (const ch of list){
         const exists = Array.from(chipsEl.querySelectorAll('.chip')).some(b => b.textContent.trim().toLowerCase() === String(ch.label||'').trim().toLowerCase());
         if (exists) continue;
@@ -338,7 +352,8 @@
     chipsEl.innerHTML = ''; (ctx.chips||[]).forEach(ch => { const b=document.createElement('button'); b.className='chip'; b.textContent=ch.label; b.addEventListener('click', ()=>{ input.value = ch.template; input.focus(); }); chipsEl.appendChild(b); });
     fetchAndAppendSmartChips(ctx);
   }
-  resetCtxBtn.addEventListener('click', ()=>{ contextFrozen=false; renderIntentAndChips(true); });
+  resetCtxBtn.addEventListener('click', ()=>{ contextFrozen=false; delete smartCache[location.hostname]; renderIntentAndChips(true); });
+  moreChipsBtn.addEventListener('click', ()=>{ fetchAndAppendSmartChips(cachedContext, true); });
 
   // recent
   async function pushRecent(){
@@ -608,6 +623,7 @@
   document.addEventListener('selectionchange', () => { positionSelTb(); }, { passive: true });
   window.addEventListener('scroll', () => { if (!selTb.classList.contains('hidden')) positionSelTb(); }, { passive: true });
   window.addEventListener('resize', () => { if (!selTb.classList.contains('hidden')) positionSelTb(); }, { passive: true });
+  window.addEventListener('blur', () => { if (!toolbarPinned) selTb.classList.add('hidden'); }, { passive: true });
   document.addEventListener('mousedown', (e)=> { if (!e.target.closest('#aura-seltb')) hideSelTb(); }, true);
 
   selTb.addEventListener('click', async (e) => {
@@ -642,3 +658,21 @@
     setTimeout(()=>t.classList.add('show'),10); setTimeout(()=>{t.classList.remove('show'); t.remove();},1800);
   }
 })();
+
+  // Simple drag: only when pinned
+  (function enableDrag(){
+    let dragging = false, startX=0, startY=0, startLeft=0, startTop=0;
+    selTb.addEventListener('mousedown', (e)=>{
+      if (!toolbarPinned) return;
+      dragging = true; startX = e.clientX; startY = e.clientY;
+      const rect = selTb.getBoundingClientRect(); startLeft = rect.left; startTop = rect.top;
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', (e)=>{
+      if (!dragging) return;
+      const dx = e.clientX - startX; const dy = e.clientY - startY;
+      selTb.style.left = `${Math.max(4, startLeft + dx)}px`;
+      selTb.style.top = `${Math.max(4, window.scrollY + startTop + dy)}px`;
+    });
+    document.addEventListener('mouseup', ()=>{ dragging = false; });
+  })();
