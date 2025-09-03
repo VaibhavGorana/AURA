@@ -286,7 +286,7 @@
       { label:'Key moments', template:`List likely key moments or chapters for this video topic.` }
     ]};
     if (isGitHub) {
-      const parts = path.split('/').').split('/').filter(Boolean);
+      const parts = path.split('/').filter(Boolean);
       const repo = parts.length >= 2 ? `${parts[0]}/${parts[1]}` : title || host;
       return { intent:`It looks like you’re viewing a code repository — “${repo}”. Want a README or feature overview?`, badges:[`👩‍💻 ${host}`], chips:[
         { label:'Explain repo', template:`Give a high-level overview of the ${repo} repository based on its README and common patterns.` },
