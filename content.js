@@ -62,7 +62,7 @@
           <div class="intent-actions">
             <button id="aura-newchat" class="linklike">New chat</button>
             <button id="aura-clear" class="linklike">Clear thread</button>
-            <button id="aura-resetctx" class="linklike">Reset context</button><button id="aura-morechips" class="linklike">✨ More suggestions</button>
+            <button id="aura-resetctx" class="linklike">Reset context</button><button id="aura-morechips" title="Fetch more AI suggestions" class="linklike">✨ More</button>
           </div>
         </div>
         <div class="aura-chips" id="aura-chips"></div>
@@ -191,6 +191,9 @@
   const recentRefreshBtn = root.querySelector('#recent-refresh');
 
   const selTb = root.querySelector('#aura-seltb');
+  // Ensure settings modal lives as last child of panel for correct stacking
+  try { if (modalEl && panel && modalEl.parentElement !== panel) panel.appendChild(modalEl); } catch {}
+
 
   // ---- Panel toggle ----
   function togglePanel(force){ panel.dataset.open = String(force ?? (panel.dataset.open !== 'true')); }
@@ -353,7 +356,12 @@
     fetchAndAppendSmartChips(ctx);
   }
   resetCtxBtn.addEventListener('click', ()=>{ contextFrozen=false; delete smartCache[location.hostname]; renderIntentAndChips(true); });
-  moreChipsBtn.addEventListener('click', ()=>{ fetchAndAppendSmartChips(cachedContext, true); });
+  moreChipsBtn.addEventListener('click', async ()=>{
+    try { const cfg = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
+      if (!cfg?.apiKey || cfg?.mock) { toast('Connect an API key (and disable Mock) for extra AI suggestions'); return; }
+    } catch {}
+    fetchAndAppendSmartChips(cachedContext, true);
+  });
 
   // recent
   async function pushRecent(){
@@ -590,6 +598,7 @@
   }
   let toolbarEnabled = true;
   let toolbarPinned = false;
+  let pinnedText = '';
   async function refreshToolbarSetting(){
     try { const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' }); toolbarEnabled = !resp || resp.toolbar !== false; } catch { toolbarEnabled = true; }
   }
@@ -628,8 +637,8 @@
 
   selTb.addEventListener('click', async (e) => {
     const btn = e.target.closest('.tb-btn'); if (!btn) return;
-    const text = getSelectionText(); const act = btn.dataset.act;
-    if (act === 'pin') { toolbarPinned = !toolbarPinned; selTb.classList.toggle('pinned', toolbarPinned); return; }
+    let text = getSelectionText(); const act = btn.dataset.act; if (!text && toolbarPinned) text = pinnedText;
+    if (act === 'pin') { toolbarPinned = !toolbarPinned; if (toolbarPinned) pinnedText = getSelectionText(); selTb.classList.toggle('pinned', toolbarPinned); return; }
     if (!text) { hideSelTb(); return; }
     hideSelTb();
     togglePanel(true); showTab('assist'); input.focus();
@@ -659,6 +668,7 @@
   }
 })();
 
+  if (typeof selTb !== 'undefined' && selTb) {
   // Simple drag: only when pinned
   (function enableDrag(){
     let dragging = false, startX=0, startY=0, startLeft=0, startTop=0;
@@ -676,3 +686,5 @@
     });
     document.addEventListener('mouseup', ()=>{ dragging = false; });
   })();
+
+}

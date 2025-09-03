@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Aura \u2013 In\u2011Page Assistant (Phase 6.5: Panel\u2011modal + Smart chips)",
-  "version": "0.6.5",
+  "name": "Aura \u2013 In\u2011Page Assistant (Phase 6.5.1: Modal/Chips/Toolbar Fixes)",
+  "version": "0.6.5.1",
   "description": "True modal settings, context menu actions, AI smart chips, and stability fixes.",
   "icons": {
     "16": "assets/icon16.png",
