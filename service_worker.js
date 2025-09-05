@@ -6,7 +6,7 @@ const LOCAL = chrome.storage.local;
 function jpath(o, p){ return p.split('.').reduce((x,k)=> (x&&k in x)?x[k]:undefined, o); }
 
 async function getCfg(){
-  const defaults = { 
+  const defaults = { theme:'auto', accent:'blue', dock:'right', 
     provider:'groq',
     model:'llama3-8b-8192',
     mock:true,
@@ -18,7 +18,7 @@ async function getCfg(){
     debug:false,
     aiRefine:true,
     autoSummary:false,
-    allowProductMulti:true
+    allowProductMulti:true, theme:'auto', accent:'blue', dock:'right'
   };
   const syncData = (await SYNC.get(SETTINGS_KEY))[SETTINGS_KEY] || {};
   const localData = (await LOCAL.get(SETTINGS_KEY))[SETTINGS_KEY] || {};
@@ -70,7 +70,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (msg?.type === 'aura:getSettings') {
         const data = (await SYNC.get(SETTINGS_KEY))[SETTINGS_KEY] 
           || (await LOCAL.get(SETTINGS_KEY))[SETTINGS_KEY] 
-          || { provider:'groq', model:'llama3-8b-8192', mock:true, toolbar:true, mode:'quick', fallback:false, groqKey:'', openaiKey:'', debug:false, aiRefine:true, autoSummary:false, allowProductMulti:true };
+          || { provider:'groq', model:'llama3-8b-8192', mock:true, toolbar:true, mode:'quick', fallback:false, groqKey:'', openaiKey:'', debug:false, aiRefine:true, autoSummary:false, allowProductMulti:true, theme:'auto', accent:'blue', dock:'right' };
         sendResponse(data);
       } else if (msg?.type === 'aura:setSettings') {
         const current = await getCfg();

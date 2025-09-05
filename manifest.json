@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Aura \u2013 In\u2011Page Assistant (Phase 8)",
-  "version": "0.8.0",
+  "name": "Aura \u2013 Premium UI (Light/Dark)",
+  "version": "0.9.0",
   "description": "Dynamic intent, article TL;DR, product compare, notes/tasks, multi-provider (Groq/OpenAI), panel\u2011local modal.",
   "icons": {
     "16": "assets/icon16.png",

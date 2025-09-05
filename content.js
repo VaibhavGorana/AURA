@@ -124,6 +124,26 @@
               </select>
             </div>
             <div class="row"><label>Model</label><input id="aura-model" placeholder="llama3-8b-8192 or gpt-4o-mini"/></div>
+<div class="row"><label>Theme</label>
+  <select id="aura-theme">
+    <option value="auto">Auto</option>
+    <option value="dark">Dark</option>
+    <option value="light">Light</option>
+  </select>
+</div>
+<div class="row"><label>Accent</label>
+  <select id="aura-accent">
+    <option value="blue">Blue</option>
+    <option value="violet">Violet</option>
+    <option value="teal">Teal</option>
+  </select>
+</div>
+<div class="row"><label>Dock</label>
+  <select id="aura-dock">
+    <option value="right">Right</option>
+    <option value="left">Left</option>
+  </select>
+</div>
             <div class="row" data-for="groq"><label>Groq Key</label><input id="aura-groqkey" type="password" placeholder="gsk_..." /></div>
             <div class="row" data-for="openai"><label>OpenAI Key</label><input id="aura-openai" type="password" placeholder="sk-..." /></div>
             <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-mock" checked/> Use mock responses</label></div>
@@ -153,6 +173,19 @@
     </div>
   `;
 
+
+  function applyTheme(theme){
+    let t = theme;
+    if (t === 'auto') { t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
+    panel.setAttribute('data-theme', t);
+  }
+  function applyAccent(accent){
+    panel.setAttribute('data-accent', accent);
+  }
+  function applyDock(dock){
+    panel.setAttribute('data-dock', dock === 'left' ? 'left' : 'right');
+  }
+
   // Refs
   const bubble = root.querySelector('#aura-bubble');
   const panel = root.querySelector('#aura-panel');
@@ -167,6 +200,9 @@
   const providerEl = root.querySelector('#aura-provider');
   const modelEl = root.querySelector('#aura-model');
   const groqKeyEl = root.querySelector('#aura-groqkey');
+  const themeEl = root.querySelector('#aura-theme');
+  const accentEl = root.querySelector('#aura-accent');
+  const dockEl = root.querySelector('#aura-dock');
   const openaiKeyEl = root.querySelector('#aura-openai');
   const mockEl = root.querySelector('#aura-mock');
   const toolbarEl = root.querySelector('#aura-toolbar');
@@ -258,6 +294,12 @@
         autosumEl.checked = !!resp.autoSummary;
         allowMultiEl.checked = resp.allowProductMulti !== false;
         debugEl.checked = !!resp.debug;
+        themeEl.value = resp.theme || 'auto';
+        accentEl.value = resp.accent || 'blue';
+        dockEl.value = resp.dock || 'right';
+        applyTheme(resp.theme||'auto');
+        applyAccent(resp.accent||'blue');
+        applyDock(resp.dock||'right');
         currentMode = (resp.mode === 'deep' ? 'deep' : 'quick'); updateModeUI();
         toggleKeyRows();
       }
@@ -795,7 +837,7 @@
 
   // Init
   (async () => {
-    try { const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' }); if (resp && resp.mode) { currentMode = (resp.mode === 'deep' ? 'deep' : 'quick'); updateModeUI(); } } catch {}
+    try { const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' }); if (resp){ if (resp.mode) { currentMode = (resp.mode === 'deep' ? 'deep' : 'quick'); updateModeUI(); } applyTheme(resp.theme||'auto'); applyAccent(resp.accent||'blue'); applyDock(resp.dock||'right'); } } catch {}
     await pushRecent();
     await loadThread();
     renderIntentAndChips(true);
@@ -809,3 +851,5 @@
     setTimeout(()=>t.classList.add('show'),10); setTimeout(()=>{t.classList.remove('show'); t.remove();},1800);
   }
 })();
+
+  try{window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ chrome.runtime.sendMessage({type:'aura:getSettings'}).then(cfg=>{ if ((cfg?.theme||'auto')==='auto') applyTheme('auto'); }); });}catch{}

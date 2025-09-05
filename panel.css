@@ -92,3 +92,74 @@ code.inline{background:rgba(255,255,255,.06);border:1px solid var(--aura-border)
   .chip{font-size:11px;padding:5px 10px}
   #aura-input{min-height:40px}
 }
+
+
+
+/* Premium Theme Tokens */
+#aura-panel[data-theme="dark"]{
+  --aura-bg:#0c0f15; --aura-surface:#0f141d;
+  --aura-border:rgba(255,255,255,.08);
+  --aura-text:#e8eafd; --aura-muted:#a5adbd;
+  --aura-chip:rgba(255,255,255,.06); --aura-chip-hover:rgba(255,255,255,.12);
+  --aura-input:rgba(255,255,255,.06);
+  --aura-shadow:0 10px 32px rgba(0,0,0,.45);
+}
+#aura-panel[data-theme="light"]{
+  --aura-bg:#f7f9fc; --aura-surface:#ffffff;
+  --aura-border:rgba(10,12,18,.12);
+  --aura-text:#141823; --aura-muted:#5a6270;
+  --aura-chip:rgba(0,0,0,.04); --aura-chip-hover:rgba(0,0,0,.08);
+  --aura-input:rgba(0,0,0,.04);
+  --aura-shadow:0 10px 28px rgba(6,10,20,.12);
+}
+/* Accent variations */
+#aura-panel[data-accent="blue"]{ --aura-accent:#4f8cff; --aura-accent-2:#7aa2ff; }
+#aura-panel[data-accent="violet"]{ --aura-accent:#8b5cf6; --aura-accent-2:#a78bfa; }
+#aura-panel[data-accent="teal"]{ --aura-accent:#14b8a6; --aura-accent-2:#2dd4bf; }
+
+/* Docking */
+#aura-panel[data-dock="right"]{ right:0; left:auto; border-left:1px solid var(--aura-border); border-right:none; transform:translateX(100%); }
+#aura-panel[data-dock="right"][data-open="true"]{ transform:translateX(0%); }
+#aura-panel[data-dock="left"]{ left:0; right:auto; border-right:1px solid var(--aura-border); border-left:none; transform:translateX(-100%); }
+#aura-panel[data-dock="left"][data-open="true"]{ transform:translateX(0%); }
+
+/* Motion polish */
+#aura-panel{ transition:transform .2s cubic-bezier(.2,.65,.25,1); }
+.aura-icon-btn, .aura-btn, .chip{ transition:transform .12s ease, background .12s ease, border-color .12s ease, box-shadow .12s ease; }
+.aura-icon-btn:hover, .aura-btn:hover{ transform:translateY(-1px); }
+.chip:hover{ transform:translateY(-1px); box-shadow:0 3px 12px rgba(0,0,0,.08); }
+
+/* Scrollbars (panel only) */
+#aura-panel *::-webkit-scrollbar{ width:10px; height:10px; }
+#aura-panel *::-webkit-scrollbar-thumb{ background:var(--aura-chip-hover); border:3px solid transparent; border-radius:10px; background-clip:content-box; }
+#aura-panel *::-webkit-scrollbar-track{ background:transparent; }
+
+/* Header glass fade per theme */
+.aura-header{ backdrop-filter:saturate(150%) blur(4px); }
+.aura-tabs{ backdrop-filter:saturate(120%) blur(2px); }
+
+/* Buttons: slight gradient surface */
+.aura-btn.primary{ background:linear-gradient(180deg, var(--aura-accent-2), var(--aura-accent)); border-color:var(--aura-accent); }
+.aura-btn.primary:hover{ filter:brightness(1.05); }
+.aura-icon-btn{ background:linear-gradient(180deg, var(--aura-chip), rgba(255,255,255,.02)); }
+
+/* Chips: premium pill */
+.chip{ background:linear-gradient(180deg, var(--aura-chip), rgba(255,255,255,.02)); border-color:var(--aura-border) }
+.chip:hover{ border-color:rgba(79,140,255,.35) }
+
+/* Toast: slightly elevated */
+.aura-toast{ backdrop-filter:blur(4px); }
+
+/* Intentbar tighten */
+.aura-intentbar{ box-shadow: inset 0 -1px 0 var(--aura-border); }
+
+/* Dialog visuals */
+#aura-panel .aura-dialog{ background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02)); }
+#aura-panel[data-theme="light"] .aura-dialog{ background:linear-gradient(180deg, rgba(0,0,0,.02), rgba(0,0,0,.00)); }
+
+/* Type scale refinements */
+#aura-panel{ font-size:14px }
+.aura-title .title-text{ font-size:16px }
+.aura-phase{ font-size:11px }
+.aura-tabs .tab{ font-size:12px }
+.msg .msg-meta{ font-size:11px }
