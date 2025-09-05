@@ -72,12 +72,12 @@ color:var(--aura-text);border-left:1px solid var(--aura-border);transform:transl
 .aura-toast.show{transform:translateX(-50%) translateY(0px);opacity:1}
 pre.code{background:#0b0f16;border:1px solid var(--aura-border);padding:10px;border-radius:10px;overflow:auto}
 code.inline{background:rgba(255,255,255,.06);border:1px solid var(--aura-border);padding:1px 4px;border-radius:6px}
-/* Modal */
-#aura-modal[hidden]{display:none!important}
-#aura-modal{position:fixed;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(6px);z-index:2147483647}
-.aura-dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,92vw);max-height:80vh;overflow:auto;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid var(--aura-border);border-radius:14px;box-shadow:var(--aura-shadow);padding:10px}
+/* Panel-local Modal */
+#aura-panel{position:fixed}
+#aura-panel #aura-modal-panel[hidden]{display:none!important}
+#aura-panel #aura-modal-panel{position:absolute;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(6px);z-index:99}
+#aura-panel .aura-dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,90%);max-height:80vh;overflow:auto;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid var(--aura-border);border-radius:14px;box-shadow:var(--aura-shadow);padding:10px}
 .aura-dialog-head{display:flex;justify-content:space-between;align-items:center;padding:4px 6px 8px 6px;border-bottom:1px solid var(--aura-border);margin-bottom:8px}
-.aura-dialog-head .title{font-weight:600}
 /* Selection toolbar */
 .aura-seltb{position:absolute;left:0;top:0;display:flex;gap:6px;padding:6px 8px;background:rgba(17,20,27,.96);border:1px solid var(--aura-border);border-radius:10px;box-shadow:var(--aura-shadow);z-index:2147483647}
 .aura-seltb.hidden{display:none}
@@ -85,15 +85,7 @@ code.inline{background:rgba(255,255,255,.06);border:1px solid var(--aura-border)
 .aura-seltb .tb-btn{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
 .aura-seltb .tb-btn:hover{background:var(--aura-chip-hover)}
 .aura-seltb .tb-btn.pin{opacity:.9}
-
-/* Panel-local modal (over the panel only) */
-#aura-panel{position:fixed}
-#aura-panel #aura-modal-panel[hidden]{display:none!important}
-#aura-panel #aura-modal-panel{position:absolute;inset:0;background:rgba(10,12,18,.55);backdrop-filter:blur(6px);z-index:5}
-#aura-panel .aura-dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,90%);max-height:80vh;overflow:auto;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid var(--aura-border);border-radius:14px;box-shadow:var(--aura-shadow);padding:10px}
-#aura-panel .aura-dialog-head{display:flex;justify-content:space-between;align-items:center;padding:4px 6px 8px 6px;border-bottom:1px solid var(--aura-border);margin-bottom:8px}
-
-/* Density tweaks for narrow panels */
+/* Narrow tweaks */
 @media (max-width: 480px){
   .aura-header{gap:6px;padding:10px}
   .aura-mode .seg{padding:5px 8px;font-size:11px}
@@ -101,5 +93,3 @@ code.inline{background:rgba(255,255,255,.06);border:1px solid var(--aura-border)
   .chip{font-size:11px;padding:5px 10px}
   #aura-input{min-height:40px}
 }
-
-#aura-panel #aura-modal-panel{z-index:99}

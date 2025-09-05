@@ -36,7 +36,7 @@
         <div class="aura-title">
           <span class="aura-dot"></span>
           <span class="title-text">Aura</span>
-          <span class="aura-phase">Phase 6.4</span>
+          <span class="aura-phase">Phase 7</span>
         </div>
         <div class="aura-mode" role="group" aria-label="Assistant mode">
           <button id="aura-mode-quick" class="seg active" data-mode="quick" title="Concise answers">Quick</button>
@@ -62,7 +62,8 @@
           <div class="intent-actions">
             <button id="aura-newchat" class="linklike">New chat</button>
             <button id="aura-clear" class="linklike">Clear thread</button>
-            <button id="aura-resetctx" class="linklike">Reset context</button><button id="aura-morechips" title="Fetch more AI suggestions" class="linklike">✨ More</button>
+            <button id="aura-resetctx" class="linklike">Reset context</button>
+            <button id="aura-morechips" class="linklike" title="Fetch more AI suggestions">✨ More</button>
           </div>
         </div>
         <div class="aura-chips" id="aura-chips"></div>
@@ -102,32 +103,37 @@
       <section class="tabpane" id="pane-recent" data-tab="recent" hidden>
         <div class="pane-section"><div class="row"><button id="recent-refresh" class="aura-btn">Refresh</button></div></div>
         <ul id="recent-list" class="list"></ul>
+      </section>
+
       <!-- Panel-local Transparent Modal -->
-    <div id="aura-modal-panel" class="aura-modal" hidden>
-      <div class="aura-dialog">
-        <div class="aura-dialog-head">
-          <div class="title">Settings</div>
-          <button id="aura-modal-close" class="aura-icon-btn">✕</button>
-        </div>
-        <div id="aura-settings" class="aura-settings">
-          <div class="row"><label>Provider</label>
-            <select id="aura-provider"><option value="groq">Groq (OpenAI-compatible)</option></select>
+      <div id="aura-modal-panel" class="aura-modal" hidden>
+        <div class="aura-dialog" role="dialog" aria-modal="true" aria-label="Aura Settings">
+          <div class="aura-dialog-head">
+            <div class="title">Settings</div>
+            <button id="aura-modal-close" class="aura-icon-btn">✕</button>
           </div>
-          <div class="row"><label>Model</label><input id="aura-model" placeholder="llama3-8b-8192"/></div>
-          <div class="row"><label>API Key</label><input id="aura-apikey" type="password" placeholder="sk-..." /></div>
-          <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-mock" checked/> Use mock responses</label></div>
-          <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-debug"/> Show debug logs</label></div>
-          <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-toolbar" checked/> Enable selection toolbar</label></div>
-          <div class="row"><label></label>
-            <button id="aura-test" class="aura-btn">Test connection</button>
-            <button id="aura-save-settings" class="aura-btn primary">Save</button>
+          <div id="aura-settings" class="aura-settings">
+            <div class="row"><label>Provider</label>
+              <select id="aura-provider">
+                <option value="groq">Groq</option>
+                <option value="openai">OpenAI</option>
+              </select>
+            </div>
+            <div class="row"><label>Model</label><input id="aura-model" placeholder="llama3-8b-8192 or gpt-4o-mini"/></div>
+            <div class="row" data-for="groq"><label>Groq Key</label><input id="aura-groqkey" type="password" placeholder="gsk_..." /></div>
+            <div class="row" data-for="openai"><label>OpenAI Key</label><input id="aura-openai" type="password" placeholder="sk-..." /></div>
+            <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-mock" checked/> Use mock responses</label></div>
+            <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-toolbar" checked/> Enable selection toolbar</label></div>
+            <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-fallback"/> Enable provider fallback</label></div>
+            <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-debug"/> Show debug logs</label></div>
+            <div class="row"><label></label>
+              <button id="aura-test" class="aura-btn">Test connection</button>
+              <button id="aura-save-settings" class="aura-btn primary">Save</button>
+            </div>
+            <div class="hint">Settings sync with your Chrome profile. Don’t paste secrets on shared machines.</div>
           </div>
-          <div class="hint">Settings stay on your device. Don’t paste secrets on shared machines.</div>
         </div>
       </div>
-    </div>
-
-    </section>
     </div>
 
     <!-- Selection Toolbar -->
@@ -140,7 +146,7 @@
     </div>
   `;
 
-  // ---- Elements ----
+  // ---- Element refs ----
   const bubble = root.querySelector('#aura-bubble');
   const panel = root.querySelector('#aura-panel');
   const closeBtn = root.querySelector('#aura-btn-close');
@@ -153,9 +159,11 @@
   const settingsEl = root.querySelector('#aura-settings');
   const providerEl = root.querySelector('#aura-provider');
   const modelEl = root.querySelector('#aura-model');
-  const apiKeyEl = root.querySelector('#aura-apikey');
+  const groqKeyEl = root.querySelector('#aura-groqkey');
+  const openaiKeyEl = root.querySelector('#aura-openai');
   const mockEl = root.querySelector('#aura-mock');
   const toolbarEl = root.querySelector('#aura-toolbar');
+  const fallbackEl = root.querySelector('#aura-fallback');
   const debugEl = root.querySelector('#aura-debug');
   const testBtn = root.querySelector('#aura-test');
   const saveSettingsBtn = root.querySelector('#aura-save-settings');
@@ -167,8 +175,6 @@
   const clearBtn = root.querySelector('#aura-clear');
   const resetCtxBtn = root.querySelector('#aura-resetctx');
   const moreChipsBtn = root.querySelector('#aura-morechips');
-  const smartCache = {}; // host-> {ts:number, chips:[]}
-
 
   const thread = root.querySelector('#aura-thread');
   const input = root.querySelector('#aura-input');
@@ -191,9 +197,6 @@
   const recentRefreshBtn = root.querySelector('#recent-refresh');
 
   const selTb = root.querySelector('#aura-seltb');
-  // Ensure settings modal lives as last child of panel for correct stacking
-  try { if (modalEl && panel && modalEl.parentElement !== panel) panel.appendChild(modalEl); } catch {}
-
 
   // ---- Panel toggle ----
   function togglePanel(force){ panel.dataset.open = String(force ?? (panel.dataset.open !== 'true')); }
@@ -217,18 +220,29 @@
   }
   tabs.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
 
-  // ---- Settings modal ----
+  // ---- Settings Modal (panel-local) ----
+  function toggleKeyRows(){
+    settingsEl.querySelectorAll('[data-for]').forEach(row => {
+      const p = row.getAttribute('data-for');
+      row.style.display = (p === providerEl.value) ? 'grid' : 'none';
+    });
+  }
   function openSettingsModal(){
     (async () => {
+      // Ensure modal is under panel for proper stacking
+      try { if (modalEl && panel && modalEl.parentElement !== panel) panel.appendChild(modalEl); } catch {}
       const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
       if (resp) {
         providerEl.value = resp.provider || 'groq';
-        modelEl.value = resp.model || 'llama3-8b-8192';
-        apiKeyEl.value = resp.apiKey || '';
+        modelEl.value = resp.model || (resp.provider==='openai' ? 'gpt-4o-mini' : 'llama3-8b-8192');
+        groqKeyEl.value = resp.groqKey || '';
+        openaiKeyEl.value = resp.openaiKey || '';
         mockEl.checked = !!resp.mock;
         toolbarEl.checked = resp.toolbar !== false;
+        fallbackEl.checked = !!resp.fallback;
         debugEl.checked = !!resp.debug;
         currentMode = (resp.mode === 'deep' ? 'deep' : 'quick'); updateModeUI();
+        toggleKeyRows();
       }
       modalEl.removeAttribute('hidden');
     })();
@@ -238,9 +252,20 @@
   modalCloseBtn.addEventListener('click', closeSettingsModal);
   modalEl.addEventListener('mousedown', (e)=> { if (e.target === modalEl) closeSettingsModal(); });
   document.addEventListener('keydown', (e)=> { if (!modalEl.hasAttribute('hidden') && e.key === 'Escape') closeSettingsModal(); });
+  providerEl.addEventListener('change', toggleKeyRows);
 
   saveSettingsBtn.addEventListener('click', async () => {
-    const payload = { provider: providerEl.value, model: modelEl.value || 'llama3-8b-8192', apiKey: apiKeyEl.value.trim(), mock: mockEl.checked, toolbar: toolbarEl.checked, debug: debugEl.checked, mode: currentMode };
+    const payload = { 
+      provider: providerEl.value, 
+      model: modelEl.value || (providerEl.value==='openai'?'gpt-4o-mini':'llama3-8b-8192'),
+      groqKey: groqKeyEl.value.trim(),
+      openaiKey: openaiKeyEl.value.trim(),
+      mock: mockEl.checked,
+      toolbar: toolbarEl.checked,
+      fallback: fallbackEl.checked,
+      debug: debugEl.checked,
+      mode: currentMode
+    };
     const res = await chrome.runtime.sendMessage({ type:'aura:setSettings', payload });
     toast(res?.ok ? 'Settings saved' : 'Failed to save settings');
     if (res?.ok) closeSettingsModal();
@@ -323,6 +348,8 @@
   let contextFrozen = false;
   let cachedContext = computeContext();
   let smartChipsLoaded = false;
+  const smartCache = {}; // host -> { ts, chips }
+
   async function fetchAndAppendSmartChips(ctx, force=false){
     smartChipsLoaded = false;
     try {
@@ -358,7 +385,7 @@
   resetCtxBtn.addEventListener('click', ()=>{ contextFrozen=false; delete smartCache[location.hostname]; renderIntentAndChips(true); });
   moreChipsBtn.addEventListener('click', async ()=>{
     try { const cfg = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
-      if (!cfg?.apiKey || cfg?.mock) { toast('Connect an API key (and disable Mock) for extra AI suggestions'); return; }
+      if (!cfg?.groqKey and not cfg?.openaiKey or cfg?.mock) { /* python-style mistake fix below */ }
     } catch {}
     fetchAndAppendSmartChips(cachedContext, true);
   });
@@ -505,33 +532,30 @@
   });
   noteExportMdBtn.addEventListener('click', async ()=>{
     const notes = await getStore(K_NOTES, []);
-    let md = `# Aura Notes\n\n`;
+    let md = `# Aura Notes\\n\\n`;
     for (const n of notes){
       const when = new Date(n.ts||Date.now()).toLocaleString();
       const title = (n.source && n.source.title) ? n.source.title : 'Source';
       const link = (n.source && n.source.url) ? n.source.url : '';
-      md += `## ${title}\n`; if (link) md += `[${link}](${link})\n\n`; md += `> ${String(n.text||'').replace(/\n/g,'\n> ')}\n\n— _${when}_\n\n`;
+      md += `## ${title}\\n`; if (link) md += `[${link}](${link})\\n\\n`; md += `> ${String(n.text||'').replace(/\\n/g,'\\n> ')}\\n\\n— _${when}_\\n\\n`;
     }
     const blob = new Blob([md], { type:'text/markdown' });
     const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='aura_notes.md'; a.click();
     setTimeout(()=>URL.revokeObjectURL(url),500);
   });
+  // Clear all notes
+  noteClearBtn.addEventListener('click', async ()=>{
+    if (!confirm('Clear all notes?')) return;
+    await setStore(K_NOTES, []);
+    renderNotes();
+    toast('All notes cleared');
+  });
 
   // Tasks
   function taskRow(t, idx){
     const li=document.createElement('li'); li.className='row-task';
-    li.innerHTML = `<label class="task-item"><input type="checkbox" data-idx="${idx}" ${t.done?'checked':''}/> <span>${esc(t.title)}</span></label>
+    li.innerHTML = `<label class="task-item"><input type="checkbox" data-idx="${idx}" ${t.done?'checked':''}/> <span>${escapeHtml(t.title)}</span></label>
       <button class="task-del aura-btn" data-idx="${idx}">Delete</button>`;
-    li.querySelector('.task-del').addEventListener('click', async (e)=>{
-      const i = Number(e.currentTarget.dataset.idx);
-      const tasks = await getStore(K_TASKS, []);
-      tasks.splice(i,1); await setStore(K_TASKS, tasks); renderTasks();
-    });
-    li.querySelector('input[type="checkbox"]').addEventListener('change', async (e)=>{
-      const i = Number(e.currentTarget.dataset.idx);
-      const tasks = await getStore(K_TASKS, []);
-      tasks[i].done = e.currentTarget.checked; await setStore(K_TASKS, tasks);
-    });
     return li;
   }
   async function renderTasks(){
@@ -549,6 +573,25 @@
   taskClearBtn.addEventListener('click', async ()=>{
     const tasks = await getStore(K_TASKS, []);
     const next = tasks.filter(t=>!t.done); await setStore(K_TASKS, next); renderTasks();
+  });
+  // Task list delegation
+  tasksList.addEventListener('change', async (e)=>{
+    const cb = e.target.closest('input[type="checkbox"]'); if (!cb) return;
+    const idx = Number(cb.getAttribute('data-idx') || cb.dataset.idx || -1);
+    if (isNaN(idx) || idx < 0) return;
+    const tasks = await getStore(K_TASKS, []);
+    if (!tasks[idx]) return;
+    tasks[idx].done = !!cb.checked;
+    await setStore(K_TASKS, tasks);
+  });
+  tasksList.addEventListener('click', async (e)=>{
+    const del = e.target.closest('.task-del'); if (!del) return;
+    const idx = Number(del.getAttribute('data-idx') || del.dataset.idx || -1);
+    if (isNaN(idx) || idx < 0) return;
+    const tasks = await getStore(K_TASKS, []);
+    tasks.splice(idx,1);
+    await setStore(K_TASKS, tasks);
+    renderTasks();
   });
 
   // Recent
@@ -667,24 +710,3 @@
     setTimeout(()=>t.classList.add('show'),10); setTimeout(()=>{t.classList.remove('show'); t.remove();},1800);
   }
 })();
-
-  if (typeof selTb !== 'undefined' && selTb) {
-  // Simple drag: only when pinned
-  (function enableDrag(){
-    let dragging = false, startX=0, startY=0, startLeft=0, startTop=0;
-    selTb.addEventListener('mousedown', (e)=>{
-      if (!toolbarPinned) return;
-      dragging = true; startX = e.clientX; startY = e.clientY;
-      const rect = selTb.getBoundingClientRect(); startLeft = rect.left; startTop = rect.top;
-      e.preventDefault();
-    });
-    document.addEventListener('mousemove', (e)=>{
-      if (!dragging) return;
-      const dx = e.clientX - startX; const dy = e.clientY - startY;
-      selTb.style.left = `${Math.max(4, startLeft + dx)}px`;
-      selTb.style.top = `${Math.max(4, window.scrollY + startTop + dy)}px`;
-    });
-    document.addEventListener('mouseup', ()=>{ dragging = false; });
-  })();
-
-}

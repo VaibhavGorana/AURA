@@ -1,7 +1,9 @@
 
 const SETTINGS_KEY = 'aura_settings';
+const SYNC = chrome.storage.sync;
+const LOCAL = chrome.storage.local;
 
-// ---------- Helpers (top-level) ----------
+// ---------- Helpers ----------
 function tryParseJson(txt){
   try { return JSON.parse(txt); } catch {}
   const m = txt && txt.match && txt.match(/```(?:json)?\n([\s\S]*?)\n```/i);
@@ -10,26 +12,33 @@ function tryParseJson(txt){
 }
 
 async function getCfg(){
-  const defaults = { provider:'groq', apiKey:'', model:'llama3-8b-8192', mock:true, toolbar:true, mode:'quick' };
-  const { [SETTINGS_KEY]: settings = defaults } = await chrome.storage.local.get(SETTINGS_KEY);
-  return { ...defaults, ...settings };
+  const defaults = { 
+    provider:'groq',
+    model:'llama3-8b-8192',
+    mock:true,
+    toolbar:true,
+    mode:'quick',
+    fallback:false,
+    groqKey:'',
+    openaiKey:'',
+    debug:false
+  };
+  const syncData = (await SYNC.get(SETTINGS_KEY))[SETTINGS_KEY] || {};
+  const localData = (await LOCAL.get(SETTINGS_KEY))[SETTINGS_KEY] || {};
+  const merged = { ...defaults, ...localData, ...syncData };
+  if (!merged.groqKey && !merged.openaiKey && merged.apiKey) {
+    if ((merged.provider||'groq') === 'openai') merged.openaiKey = merged.apiKey; else merged.groqKey = merged.apiKey;
+  }
+  return merged;
 }
 
-async function smartChips(context){
-  const cfg = await getCfg();
-  if (cfg.mock || !cfg.apiKey) return [];
-  const prompt = `Given this page context, propose 3-5 short action chips as JSON array of {\"label\": string, \"template\": string}. No prose.\n\nContext:\n${JSON.stringify(context).slice(0,1500)}`;
-  try {
-    const res = await callGroq({ ...cfg, prompt, context: {}, mode: 'quick' });
-    const arr = tryParseJson(res.text) || [];
-    return Array.isArray(arr) ? arr.filter(o=>o && o.label && o.template).slice(0,5) : [];
-  } catch (e) { return []; }
+async function setCfg(next){
+  try { await SYNC.set({ [SETTINGS_KEY]: next }); } catch {}
+  try { await LOCAL.set({ [SETTINGS_KEY]: next }); } catch {}
 }
 
-// ---------- Lifecycle ----------
+// ---------- Context Menu & Install ----------
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Aura Phase 6.4 installed');
-  // Context menu for selection
   try {
     chrome.contextMenus.removeAll(() => {
       chrome.contextMenus.create({ id:'aura', title:'Aura', contexts:['selection'] });
@@ -68,12 +77,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
     try {
       if (msg?.type === 'aura:getSettings') {
-        const data = await chrome.storage.local.get(SETTINGS_KEY);
-        sendResponse(data[SETTINGS_KEY] || { provider:'groq', apiKey:'', model:'llama3-8b-8192', mock:true, toolbar:true, mode:'quick' });
+        const data = (await SYNC.get(SETTINGS_KEY))[SETTINGS_KEY] 
+          || (await LOCAL.get(SETTINGS_KEY))[SETTINGS_KEY] 
+          || { provider:'groq', model:'llama3-8b-8192', mock:true, toolbar:true, mode:'quick', fallback:false, groqKey:'', openaiKey:'', debug:false };
+        sendResponse(data);
       } else if (msg?.type === 'aura:setSettings') {
-        const current = (await chrome.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY] || {};
+        const current = await getCfg();
         const next = { ...current, ...(msg.payload || {}) };
-        await chrome.storage.local.set({ [SETTINGS_KEY]: next });
+        await setCfg(next);
         sendResponse({ ok:true, settings: next });
       } else if (msg?.type === 'aura:chat') {
         const { prompt, context, mode='quick' } = msg.payload || {};
@@ -97,22 +108,62 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
-// ---------- LLM calls ----------
+// ---------- LLM ----------
 async function handleChat({ prompt, context = {}, mode }) {
   const cfg = await getCfg();
-  if (cfg.mock || !cfg.apiKey) {
+  const key = cfg.provider === 'openai' ? cfg.openaiKey : cfg.groqKey;
+  if (cfg.mock || !key) {
     const header = mode === 'deep' ? 'Structured Answer' : 'Quick Answer';
     return { provider:'mock', text:`**${header}**\n${prompt}\n\n_(Connect an API key in Settings for live answers.)_` };
   }
-  if (cfg.provider === 'groq') return await callGroq({ ...cfg, prompt, context, mode });
-  // Future: openai etc.
-  return { provider:'mock', text:`Quick Answer (mock): ${prompt}` };
+  try {
+    if (cfg.provider === 'openai') return await callOpenAI({ apiKey: cfg.openaiKey, model: cfg.model, prompt, context, mode });
+    return await callGroq({ apiKey: cfg.groqKey, model: cfg.model, prompt, context, mode });
+  } catch (e) {
+    if (cfg.fallback) {
+      try {
+        if (cfg.provider === 'openai') return await callGroq({ apiKey: cfg.groqKey, model: 'llama3-8b-8192', prompt, context, mode });
+        else return await callOpenAI({ apiKey: cfg.openaiKey, model: 'gpt-4o-mini', prompt, context, mode });
+      } catch (e2) {}
+    }
+    throw e;
+  }
 }
 
 async function testProvider() {
   const cfg = await getCfg();
-  if (!cfg.apiKey || cfg.mock) return false;
-  try { const res = await callGroq({ ...cfg, prompt: 'ping', context: {}, mode: 'quick' }); return !!res?.text; } catch { return false; }
+  if (cfg.mock) return false;
+  try {
+    if (cfg.provider === 'openai') { 
+      if (!cfg.openaiKey) return false; 
+      const res = await callOpenAI({ apiKey: cfg.openaiKey, model: cfg.model || 'gpt-4o-mini', prompt: 'ping', context: {}, mode: 'quick' }); 
+      return !!res?.text; 
+    } else { 
+      if (!cfg.groqKey) return false; 
+      const res = await callGroq({ apiKey: cfg.groqKey, model: cfg.model || 'llama3-8b-8192', prompt: 'ping', context: {}, mode: 'quick' }); 
+      return !!res?.text; 
+    }
+  } catch { return false; }
+}
+
+async function callOpenAI({ apiKey, model, prompt, context = {}, mode }) {
+  const endpoint = 'https://api.openai.com/v1/chat/completions';
+  const system = mode === 'deep'
+    ? 'You are Aura, a structured research copilot. Use compact sections and bullets when helpful.'
+    : 'You are Aura, a crisp, in-page assistant. Be concise and relevant to the current page.';
+  const messages = [
+    { role: 'system', content: system },
+    { role: 'user', content: `URL: ${context.url || ''}\nTitle: ${context.title || ''}\nSelection: ${context.selection || ''}\n\nTask: ${prompt}` }
+  ];
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${apiKey}` },
+    body: JSON.stringify({ model: model || 'gpt-4o-mini', messages, temperature: 0.4 })
+  });
+  if (!res.ok) throw new Error(`OpenAI error ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content?.trim() || '(no content)';
+  return { provider:'openai', text };
 }
 
 async function callGroq({ apiKey, model, prompt, context = {}, mode }) {
@@ -120,20 +171,31 @@ async function callGroq({ apiKey, model, prompt, context = {}, mode }) {
   const system = mode === 'deep'
     ? 'You are Aura, a structured research copilot. Use compact sections and bullets when helpful.'
     : 'You are Aura, a crisp, in-page assistant. Be concise and relevant to the current page.';
-
   const messages = [
     { role: 'system', content: system },
     { role: 'user', content: `URL: ${context.url || ''}\nTitle: ${context.title || ''}\nSelection: ${context.selection || ''}\n\nTask: ${prompt}` }
   ];
-
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${apiKey}` },
     body: JSON.stringify({ model: model || 'llama3-8b-8192', messages, temperature: 0.4 })
   });
-
   if (!res.ok) throw new Error(`Groq error ${res.status}: ${await res.text()}`);
   const data = await res.json();
   const text = data?.choices?.[0]?.message?.content?.trim() || '(no content)';
   return { provider:'groq', text };
+}
+
+// ---------- Smart chips (uses active provider) ----------
+async function smartChips(context){
+  const cfg = await getCfg();
+  const key = cfg.provider === 'openai' ? cfg.openaiKey : cfg.groqKey;
+  if (cfg.mock || !key) return [];
+  const prompt = `Given this page context, propose 3-5 short action chips as JSON array of {\"label\": string, \"template\": string}. No prose.\n\nContext:\n${JSON.stringify(context).slice(0,1500)}`;
+  try {
+    const fn = cfg.provider === 'openai' ? callOpenAI : callGroq;
+    const res = await fn({ apiKey: key, model: cfg.model, prompt, context: {}, mode: 'quick' });
+    const arr = tryParseJson(res.text) || [];
+    return Array.isArray(arr) ? arr.filter(o=>o && o.label && o.template).slice(0,5) : [];
+  } catch (e) { return []; }
 }
