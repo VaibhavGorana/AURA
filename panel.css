@@ -46,7 +46,7 @@ color:var(--aura-text);border-left:1px solid var(--aura-border);transform:transl
 .chip{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:999px;padding:6px 12px;font-size:12px;cursor:pointer}
 .chip:hover{background:var(--aura-chip-hover)}
 .aura-thread{flex:1;min-height:0;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;scroll-behavior:smooth}
-.msg{border-radius:14px;padding:10px 12px;line-height:1.45;font-size:14px;border:1px solid var(--aura-border);background:rgba(255,255,255,.04);max-width:85%;position:relative}
+.msg{border-radius:14px;padding:10px 12px;line-height:1.45;font-size:14px;border:1px solid var(--aura-border);background:rgba(255,255,255,.04);max-width:92%;position:relative}
 .msg.user{margin-left:auto;background:rgba(79,140,255,.12);border-color:rgba(79,140,255,.35)}
 .msg.assistant.error{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35)}
 .msg .msg-meta{opacity:0;position:absolute;right:10px;bottom:-18px;font-size:11px;color:var(--aura-muted);transition:opacity .15s ease}
@@ -62,6 +62,7 @@ color:var(--aura-text);border-left:1px solid var(--aura-border);transform:transl
 .note-meta{font-size:12px;color:var(--aura-muted)}
 .note-actions{margin-left:auto}
 .task-item{display:flex;align-items:center;gap:8px}
+.task-due{display:inline-block;margin-left:6px;padding:1px 6px;border:1px solid var(--aura-border);border-radius:999px;font-size:11px;color:#dbe7ff;background:rgba(79,140,255,.12)}
 .recent-link{color:#cfe0ff;text-decoration:none}
 .recent-link:hover{text-decoration:underline}
 .aura-footer{position:sticky;bottom:0;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--aura-border);background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.02) 60%)}
@@ -81,10 +82,8 @@ code.inline{background:rgba(255,255,255,.06);border:1px solid var(--aura-border)
 /* Selection toolbar */
 .aura-seltb{position:absolute;left:0;top:0;display:flex;gap:6px;padding:6px 8px;background:rgba(17,20,27,.96);border:1px solid var(--aura-border);border-radius:10px;box-shadow:var(--aura-shadow);z-index:2147483647}
 .aura-seltb.hidden{display:none}
-.aura-seltb.pinned{border-color:rgba(255,200,0,.5)}
 .aura-seltb .tb-btn{background:var(--aura-chip);border:1px solid var(--aura-border);color:var(--aura-text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
 .aura-seltb .tb-btn:hover{background:var(--aura-chip-hover)}
-.aura-seltb .tb-btn.pin{opacity:.9}
 /* Narrow tweaks */
 @media (max-width: 480px){
   .aura-header{gap:6px;padding:10px}

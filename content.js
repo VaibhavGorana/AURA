@@ -34,9 +34,9 @@
     <div id="aura-panel" data-open="false" role="dialog" aria-label="Aura panel">
       <div class="aura-header">
         <div class="aura-title">
-          <span class="aura-dot"></span>
+          <span class="aura-dot"></"></span>
           <span class="title-text">Aura</span>
-          <span class="aura-phase">Phase 7</span>
+          <span class="aura-phase">Phase 8</span>
         </div>
         <div class="aura-mode" role="group" aria-label="Assistant mode">
           <button id="aura-mode-quick" class="seg active" data-mode="quick" title="Concise answers">Quick</button>
@@ -62,6 +62,8 @@
           <div class="intent-actions">
             <button id="aura-newchat" class="linklike">New chat</button>
             <button id="aura-clear" class="linklike">Clear thread</button>
+            <button id="aura-copy-md" class="linklike">Copy MD</button>
+            <button id="aura-export-chat" class="linklike">Export JSON</button>
             <button id="aura-resetctx" class="linklike">Reset context</button>
             <button id="aura-morechips" class="linklike" title="Fetch more AI suggestions">✨ More</button>
           </div>
@@ -86,13 +88,15 @@
             <button id="note-clear" class="aura-btn">Clear All</button>
           </div>
         </div>
+        <div class="row"><input id="note-search" placeholder="Search notes…"/></div>
+        <div id="note-tags" class="tags"></div>
         <ul id="notes-list" class="list"></ul>
       </section>
 
       <section class="tabpane" id="pane-tasks" data-tab="tasks" hidden>
         <div class="pane-section">
           <div class="row">
-            <input id="task-input" placeholder="Task title (use #today, #research etc.)" />
+            <input id="task-input" placeholder="Task title (use #today, #tomorrow, #thisweek)"/>
             <button id="task-add" class="aura-btn primary">Add Task</button>
             <button id="task-clear" class="aura-btn">Clear Completed</button>
           </div>
@@ -125,28 +129,31 @@
             <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-mock" checked/> Use mock responses</label></div>
             <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-toolbar" checked/> Enable selection toolbar</label></div>
             <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-fallback"/> Enable provider fallback</label></div>
+            <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-airefine" checked/> AI‑refine intent line</label></div>
+            <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-autosum"/> Auto‑summary on articles</label></div>
+            <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-allowmulti" checked/> Allow multi‑URL product compare</label></div>
             <div class="row"><label></label><label class="inline"><input type="checkbox" id="aura-debug"/> Show debug logs</label></div>
             <div class="row"><label></label>
               <button id="aura-test" class="aura-btn">Test connection</button>
               <button id="aura-save-settings" class="aura-btn primary">Save</button>
             </div>
+            <div class="row"><label></label><button id="aura-clear-settings" class="aura-btn">Clear all settings/keys</button></div>
             <div class="hint">Settings sync with your Chrome profile. Don’t paste secrets on shared machines.</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Selection Toolbar -->
+    <!-- Selection Toolbar (no Pin) -->
     <div id="aura-seltb" class="aura-seltb hidden" role="toolbar" aria-label="Selection actions">
       <button class="tb-btn" data-act="explain" title="Explain">Explain</button>
       <button class="tb-btn" data-act="summarize" title="Summarize">Summarize</button>
       <button class="tb-btn" data-act="translate" title="Translate">Translate</button>
       <button class="tb-btn" data-act="save" title="Save to Notes">Save</button>
-      <button class="tb-btn pin" data-act="pin" title="Pin toolbar">📌</button>
     </div>
   `;
 
-  // ---- Element refs ----
+  // Refs
   const bubble = root.querySelector('#aura-bubble');
   const panel = root.querySelector('#aura-panel');
   const closeBtn = root.querySelector('#aura-btn-close');
@@ -164,9 +171,13 @@
   const mockEl = root.querySelector('#aura-mock');
   const toolbarEl = root.querySelector('#aura-toolbar');
   const fallbackEl = root.querySelector('#aura-fallback');
+  const airefineEl = root.querySelector('#aura-airefine');
+  const autosumEl = root.querySelector('#aura-autosum');
+  const allowMultiEl = root.querySelector('#aura-allowmulti');
   const debugEl = root.querySelector('#aura-debug');
   const testBtn = root.querySelector('#aura-test');
   const saveSettingsBtn = root.querySelector('#aura-save-settings');
+  const clearSettingsBtn = root.querySelector('#aura-clear-settings');
 
   const intentline = root.querySelector('#aura-intentline');
   const badges = root.querySelector('#aura-badges');
@@ -175,6 +186,8 @@
   const clearBtn = root.querySelector('#aura-clear');
   const resetCtxBtn = root.querySelector('#aura-resetctx');
   const moreChipsBtn = root.querySelector('#aura-morechips');
+  const copyMdBtn = root.querySelector('#aura-copy-md');
+  const exportChatBtn = root.querySelector('#aura-export-chat');
 
   const thread = root.querySelector('#aura-thread');
   const input = root.querySelector('#aura-input');
@@ -186,6 +199,8 @@
   const noteExportBtn = root.querySelector('#note-export');
   const noteExportMdBtn = root.querySelector('#note-export-md');
   const noteClearBtn = root.querySelector('#note-clear');
+  const noteSearch = root.querySelector('#note-search');
+  const noteTags = root.querySelector('#note-tags');
   const notesList = root.querySelector('#notes-list');
 
   const taskInput = root.querySelector('#task-input');
@@ -198,7 +213,7 @@
 
   const selTb = root.querySelector('#aura-seltb');
 
-  // ---- Panel toggle ----
+  // Toggle
   function togglePanel(force){ panel.dataset.open = String(force ?? (panel.dataset.open !== 'true')); }
   bubble.addEventListener('click', () => togglePanel(true));
   closeBtn.addEventListener('click', () => togglePanel(false));
@@ -208,19 +223,19 @@
       const sel = (msg.selection||'').trim(); if (!sel) return;
       togglePanel(true); showTab('assist');
       const templates = { explain: `Explain this selection in simple terms:\n\n${sel}`, summarize: `Summarize this selection in 3–5 bullets:\n\n${sel}`, translate: `Translate this into English:\n\n${sel}` };
-      if (msg.act === 'save') { (async ()=>{ const notes = await getStore(K_NOTES, []); notes.unshift({ text: sel, source:{ url: location.href, title: document.title }, ts: now() }); await setStore(K_NOTES, notes); toast('Saved to Notes'); })(); }
+      if (msg.act === 'save') { (async ()=>{ const notes = await getStore(K_NOTES, []); notes.unshift({ text: sel, source:{ url: location.href, title: document.title }, ts: now(), tags:[hostTag()] }); await setStore(K_NOTES, notes); toast('Saved to Notes'); })(); }
       else handleSend(templates[msg.act] || sel);
     }
   }); } catch {}
 
-  // ---- Tabs ----
+  // Tabs
   function showTab(name){
     tabs.forEach(b => { const active = b.dataset.tab === name; b.classList.toggle('active', active); b.setAttribute('aria-selected', String(active)); });
     panes.forEach(p => p.hidden = (p.dataset.tab !== name));
   }
   tabs.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
 
-  // ---- Settings Modal (panel-local) ----
+  // Modal
   function toggleKeyRows(){
     settingsEl.querySelectorAll('[data-for]').forEach(row => {
       const p = row.getAttribute('data-for');
@@ -229,7 +244,6 @@
   }
   function openSettingsModal(){
     (async () => {
-      // Ensure modal is under panel for proper stacking
       try { if (modalEl && panel && modalEl.parentElement !== panel) panel.appendChild(modalEl); } catch {}
       const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
       if (resp) {
@@ -240,6 +254,9 @@
         mockEl.checked = !!resp.mock;
         toolbarEl.checked = resp.toolbar !== false;
         fallbackEl.checked = !!resp.fallback;
+        airefineEl.checked = resp.aiRefine !== false;
+        autosumEl.checked = !!resp.autoSummary;
+        allowMultiEl.checked = resp.allowProductMulti !== false;
         debugEl.checked = !!resp.debug;
         currentMode = (resp.mode === 'deep' ? 'deep' : 'quick'); updateModeUI();
         toggleKeyRows();
@@ -264,18 +281,26 @@
       toolbar: toolbarEl.checked,
       fallback: fallbackEl.checked,
       debug: debugEl.checked,
+      aiRefine: airefineEl.checked,
+      autoSummary: autosumEl.checked,
+      allowProductMulti: allowMultiEl.checked,
       mode: currentMode
     };
     const res = await chrome.runtime.sendMessage({ type:'aura:setSettings', payload });
     toast(res?.ok ? 'Settings saved' : 'Failed to save settings');
     if (res?.ok) closeSettingsModal();
   });
+  clearSettingsBtn.addEventListener('click', async ()=>{
+    if (!confirm('Clear all settings and keys?')) return;
+    await chrome.runtime.sendMessage({ type:'aura:setSettings', payload: { provider:'groq', model:'llama3-8b-8192', groqKey:'', openaiKey:'', mock:true, toolbar:true, fallback:false, debug:false, aiRefine:true, autoSummary:false, allowProductMulti:true } });
+    toast('Settings cleared');
+  });
   testBtn.addEventListener('click', async () => {
     const ok = await chrome.runtime.sendMessage({ type:'aura:testProvider' });
     toast(ok?.ok ? 'Provider OK' : 'Provider check failed (enable key & disable Mock)');
   });
 
-  // ---- Context detection + chips ----
+  // Context + chips
   function estReadingTime(text){
     const words = (text || '').trim().split(/\s+/).filter(Boolean).length;
     if (!words) return null;
@@ -308,52 +333,53 @@
     if (isSearch) {
       const q = u.searchParams.get('q') || u.searchParams.get('query') || '';
       const query = (q || title).trim().replace(/\s+/g, ' ').slice(0, 120);
-      return { intent: query ? `It looks like you're looking for “${query}”. Want a quick answer or better phrasing?` : `It looks like you're exploring search results. Want a quick answer or better phrasing?`,
+      return { intent: query ? `It looks like you’re looking for “${query}”. Want a quick answer or better phrasing?` : `It looks like you’re exploring search results. Want a quick answer or better phrasing?`,
                badges:[`🔎 ${host}`], chips:[
                  { label:'Refine query', template: query ? `Improve this search query: ${query}` : 'Help me refine my search query' },
                  { label:'Quick answer', template: query ? `Give me a concise answer about: ${query}` : 'Give me a concise answer to my question' },
                  { label:'Related terms', template: query ? `Suggest related search terms for: ${query}` : 'Suggest related search terms' }
-               ] };
+               ], pageType:'search', query };
     }
     if (isYouTube) return { intent:`It looks like you’re watching a video — “${title || host}”. Want a summary or key moments?`, badges:[`▶️ ${host}`], chips:[
-      { label:'Video TL;DR', template:`Summarize the main points of this video based on its title && context.` },
+      { label:'Video TL;DR', template:`Summarize the main points of this video based on its title and context.` },
       { label:'Key moments', template:`List likely key moments or chapters for this video topic.` }
-    ]};
+    ], pageType:'video' };
     if (isGitHub) {
       const parts = path.split('/').filter(Boolean);
       const repo = parts.length >= 2 ? `${parts[0]}/${parts[1]}` : title || host;
       return { intent:`It looks like you’re viewing a code repository — “${repo}”. Want a README or feature overview?`, badges:[`👩‍💻 ${host}`], chips:[
-        { label:'Explain repo', template:`Give a high-level overview of the ${repo} repository based on its README && common patterns.` },
-        { label:'Key files', template:`List likely key files or directories && what they do for ${repo}.` }
-      ]};
+        { label:'Explain repo', template:`Give a high-level overview of the ${repo} repository based on its README and common patterns.` },
+        { label:'Key files', template:`List likely key files or directories and what they do for ${repo}.` }
+      ], pageType:'code' };
     }
     if (isWiki) return { intent:`It looks like you’re reading a reference page — “${title || host}”. Want a concise summary or key facts?`, badges:[`📘 ${host}`, readTime && `⏱️ ${readTime}`].filter(Boolean), chips:[
       { label:'Summary', template:`Summarize the key points of this topic in 5 bullets.` },
-      { label:'Key facts', template:`List the most important facts && dates about this topic.` }
-    ]};
+      { label:'Key facts', template:`List the most important facts and dates about this topic.` }
+    ], pageType:'article' };
     if (isProduct) return { intent:`It looks like you’re comparing products — “${title || host}”. Want a quick features/price breakdown?`, badges:[`🛒 ${host}`], chips:[
       { label:'Compare features', template:`Create a simple feature comparison for ${title || host}.` },
-      { label:'Pros & cons', template:`Provide concise pros && cons for ${title || host}.` }
-    ]};
+      { label:'Pros & cons', template:`Provide concise pros and cons for ${title || host}.` },
+      { label:'Compare with links…', template:`COMPARE_UI` }
+    ], pageType:'product' };
     if (isPDF) return { intent:`It looks like you’re viewing a PDF. Want an overview or bullet summary?`, badges:[`📄 ${host}`], chips:[
       { label:'Outline', template:`Provide a brief outline of the key sections in this PDF.` },
       { label:'Key takeaways', template:`List the top 5 takeaways from this PDF.` }
-    ]};
+    ], pageType:'pdf' };
     return { intent:`It looks like you’re reading about “${title || host}”. Want a TL;DR or key takeaways?`, badges:[`📰 ${host}`, (readTime && `⏱️ ${readTime}`)].filter(Boolean), chips:[
       { label:'TL;DR', template:`Give a concise TL;DR of this page.` },
       { label:'Key takeaways', template:`List 5 key takeaways from this page.` }
-    ]};
+    ], pageType:'article' };
   }
 
   let contextFrozen = false;
   let cachedContext = computeContext();
   let smartChipsLoaded = false;
-  const smartCache = {}; // host -> { ts, chips }
+  const smartCache = {}; // host+title -> { ts, chips }
 
   async function fetchAndAppendSmartChips(ctx, force=false){
     smartChipsLoaded = false;
     try {
-      const key = location.hostname;
+      const key = location.hostname + '::' + (document.title||'').slice(0,80);
       const nowTs = Date.now();
       const cached = smartCache[key];
       let list = [];
@@ -368,29 +394,81 @@
         const exists = Array.from(chipsEl.querySelectorAll('.chip')).some(b => b.textContent.trim().toLowerCase() === String(ch.label||'').trim().toLowerCase());
         if (exists) continue;
         const b = document.createElement('button'); b.className='chip'; b.textContent = ch.label || 'Action';
-        b.addEventListener('click', ()=>{ input.value = ch.template || ''; input.focus(); });
+        b.addEventListener('click', ()=>{ if (ch.template==='COMPARE_UI'){ ensureCompareUI(); compareUI.querySelector('.cmp-input').focus(); } else { input.value = ch.template || ''; input.focus(); } });
         chipsEl.appendChild(b);
       }
       smartChipsLoaded = true;
     } catch { smartChipsLoaded = true; }
   }
+
+  // Compare UI
+  let compareUI = null;
+  function ensureCompareUI(){
+    if (compareUI) return compareUI;
+    compareUI = document.createElement('div');
+    compareUI.className = 'compare-ui';
+    compareUI.innerHTML = `<input class="cmp-input" placeholder="Paste 1–2 product URLs, comma separated"><button class="aura-btn primary cmp-go">Compare</button>`;
+    chipsEl.parentNode.insertBefore(compareUI, chipsEl.nextSibling);
+    compareUI.querySelector('.cmp-go').addEventListener('click', async ()=>{
+      const val = compareUI.querySelector('.cmp-input').value.trim();
+      const extra = val ? val.split(/\s*,\s*/).filter(Boolean) : [];
+      const urls = [location.href, ...extra].slice(0,3);
+      const sk = appendSkeleton();
+      try {
+        const resp = await chrome.runtime.sendMessage({ type:'aura:compareProducts', payload: { urls } });
+        if (resp?.md) replaceSkeleton(sk, 'assistant', resp.md); else replaceSkeleton(sk, 'assistant', 'No comparison result.');
+      } catch (e) { replaceSkeletonWithError(sk, String(e), 'Compare these products'); }
+    });
+    return compareUI;
+  }
+
   function renderIntentAndChips(force=false){
     if (!force && contextFrozen) return;
     const ctx = cachedContext = computeContext();
     intentline.textContent = ctx.intent;
     badges.innerHTML = ''; (ctx.badges||[]).forEach(b => { const s=document.createElement('span'); s.className='badge'; s.textContent=b; badges.appendChild(s); });
-    chipsEl.innerHTML = ''; (ctx.chips||[]).forEach(ch => { const b=document.createElement('button'); b.className='chip'; b.textContent=ch.label; b.addEventListener('click', ()=>{ input.value = ch.template; input.focus(); }); chipsEl.appendChild(b); });
+    chipsEl.innerHTML = ''; (ctx.chips||[]).forEach(ch => { const b=document.createElement('button'); b.className='chip'; b.textContent=ch.label; b.addEventListener('click', ()=>{ if (ch.template==='COMPARE_UI'){ ensureCompareUI(); compareUI.querySelector('.cmp-input').focus(); } else { input.value = ch.template; input.focus(); } }); chipsEl.appendChild(b); });
     fetchAndAppendSmartChips(ctx);
+
+    // AI refine intent (if enabled)
+    (async () => {
+      try {
+        const cfg = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
+        if (cfg && cfg.aiRefine !== false && !cfg.mock && (cfg.groqKey || cfg.openaiKey)) {
+          const pageType = ctx.pageType || '';
+          const q = /It looks like you’re looking for “([^”]+)”/.exec(ctx.intent)?.[1] || '';
+          const resp = await chrome.runtime.sendMessage({ type:'aura:refineIntent', payload: { host: location.hostname, title: document.title, pageType, query: q } });
+          if (resp && resp.line) { intentline.textContent = resp.line; }
+        }
+      } catch {}
+    })();
+
+    // Auto-summary on article/wiki (if enabled)
+    (async () => {
+      try {
+        const cfg = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
+        const isArticleType = /📘|📰/.test((ctx.badges||[]).join(' ')) || ctx.pageType === 'article';
+        if (isArticleType && cfg && cfg.autoSummary && !cfg.mock && (cfg.groqKey || cfg.openaiKey)) {
+          const text = extractMainText().slice(0, 3000);
+          if (text && thread.childElementCount < 3) {
+            const sk = appendSkeleton();
+            const resp = await chrome.runtime.sendMessage({ type:'aura:autoSummary', payload: { text } });
+            if (resp && resp.text) { replaceSkeleton(sk, 'assistant', '**TL;DR**\n' + resp.text); }
+            else { sk.remove(); }
+          }
+        }
+      } catch {}
+    })();
   }
-  resetCtxBtn.addEventListener('click', ()=>{ contextFrozen=false; delete smartCache[location.hostname]; renderIntentAndChips(true); });
+  resetCtxBtn.addEventListener('click', ()=>{ contextFrozen=false; Object.keys(smartCache).forEach(k=>delete smartCache[k]); renderIntentAndChips(true); });
   moreChipsBtn.addEventListener('click', async ()=>{
     try { const cfg = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
-      if (((!cfg || (!cfg.groqKey && !cfg.openaiKey)) || (cfg && cfg.mock))) { toast('Connect an API key (&& disable Mock) for extra AI suggestions'); return; }
+      if ((!cfg || (!cfg.groqKey && !cfg.openaiKey)) || (cfg && cfg.mock)) { toast('Connect an API key (and disable Mock) for extra AI suggestions'); return; }
     } catch {}
     fetchAndAppendSmartChips(cachedContext, true);
   });
 
-  // recent
+  // Recent
   async function pushRecent(){
     const rec = await getStore(K_RECENTS, []);
     const item = { url: location.href, title: document.title, ts: now() };
@@ -399,7 +477,7 @@
     await setStore(K_RECENTS, dedup.slice(0,10));
   }
 
-  // thread persistence
+  // Thread
   async function loadThread(){
     const arr = await getStore(threadKey(), []);
     thread.innerHTML='';
@@ -419,7 +497,7 @@
     renderIntentAndChips(true);
   }
 
-  // rendering
+  // Render
   function makeActions(text){
     const wrap = document.createElement('div');
     wrap.className = 'msg-actions';
@@ -455,7 +533,7 @@
     thread.appendChild(e); thread.scrollTop = thread.scrollHeight;
   }
 
-  // chat + mode
+  // Chat + mode
   const modeQuickBtn = root.querySelector('#aura-mode-quick');
   const modeDeepBtn = root.querySelector('#aura-mode-deep');
   let currentMode = 'quick';
@@ -491,11 +569,25 @@
 
   newChatBtn.addEventListener('click', clearThread);
   clearBtn.addEventListener('click', clearThread);
+  copyMdBtn.addEventListener('click', async ()=>{
+    const arr = await getStore(threadKey(), []);
+    let md = '# Aura Conversation\n\n';
+    for (const m of arr){ md += `**${m.role}:**\n\n${m.text}\n\n---\n`; }
+    try { await navigator.clipboard.writeText(md); toast('Conversation copied'); } catch { toast('Copy failed'); }
+  });
+  exportChatBtn.addEventListener('click', async ()=>{
+    const arr = await getStore(threadKey(), []);
+    const blob = new Blob([JSON.stringify(arr, null, 2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='aura_conversation.json'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 500);
+  });
 
   // Notes
+  function hostTag(){ return '#' + hostName().split('.').slice(-2).join('.').replace('.', '_'); }
   function esc(s=''){ return s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
   function noteRow(n, idx){
     const li=document.createElement('li'); li.className='row-note';
+    const due = n.tags?.find(t=>/^#(today|tomorrow|thisweek)$/.test(t)) || '';
     li.innerHTML = `<div class="note-text">${esc(n.text)}</div>
       <div class="note-meta"><a href="${esc(n.source?.url||'#')}" target="_blank">${esc(n.source?.title||'Source')}</a> · ${new Date(n.ts||Date.now()).toLocaleString()}</div>
       <div class="note-actions"><button data-idx="${idx}" class="note-del aura-btn">Delete</button></div>`;
@@ -508,20 +600,30 @@
   }
   async function renderNotes(){
     const notes = await getStore(K_NOTES, []);
+    const q = (noteSearch?.value||'').toLowerCase();
+    const tags = [...new Set(notes.map(n=> (n.tags||[])).flat())];
+    if (noteTags){ noteTags.innerHTML=''; tags.forEach(t=>{ const b=document.createElement('button'); b.className='chip'; b.textContent=t; b.addEventListener('click', ()=>{ noteFilter = (noteFilter===t?'':t); renderNotes(); }); noteTags.appendChild(b); }); }
+    const filtered = notes.filter(n=>{
+      if (noteFilter && !(n.tags||[]).includes(noteFilter)) return false;
+      if (q && !(String(n.text||'').toLowerCase().includes(q) || String(n.source?.title||'').toLowerCase().includes(q))) return false;
+      return true;
+    });
     notesList.innerHTML='';
-    if (!notes.length) { const li=document.createElement('li'); li.textContent='No notes yet.'; notesList.appendChild(li); return; }
-    notes.forEach((n,i)=> notesList.appendChild(noteRow(n,i)));
+    if (!filtered.length) { const li=document.createElement('li'); li.textContent='No notes yet.'; notesList.appendChild(li); return; }
+    filtered.forEach((n,i)=> notesList.appendChild(noteRow(n,i)));
   }
+  let noteFilter = '';
+  noteSearch?.addEventListener('input', ()=> renderNotes());
   noteAddBtn.addEventListener('click', async ()=>{
     const text = noteInput.value.trim(); if (!text) return;
     const notes = await getStore(K_NOTES, []);
-    notes.unshift({ text, source:{ url: location.href, title: document.title }, ts: now() });
+    notes.unshift({ text, source:{ url: location.href, title: document.title }, ts: now(), tags:[hostTag()] });
     await setStore(K_NOTES, notes); noteInput.value=''; renderNotes();
   });
   noteAddSelBtn.addEventListener('click', async ()=>{
     const sel = String(window.getSelection()||'').trim(); if (!sel) { toast('No selection'); return; }
     const notes = await getStore(K_NOTES, []);
-    notes.unshift({ text: sel, source:{ url: location.href, title: document.title }, ts: now() });
+    notes.unshift({ text: sel, source:{ url: location.href, title: document.title }, ts: now(), tags:[hostTag()] });
     await setStore(K_NOTES, notes); renderNotes();
   });
   noteExportBtn.addEventListener('click', async ()=>{
@@ -532,18 +634,17 @@
   });
   noteExportMdBtn.addEventListener('click', async ()=>{
     const notes = await getStore(K_NOTES, []);
-    let md = `# Aura Notes\\n\\n`;
+    let md = `# Aura Notes\n\n`;
     for (const n of notes){
       const when = new Date(n.ts||Date.now()).toLocaleString();
       const title = (n.source && n.source.title) ? n.source.title : 'Source';
       const link = (n.source && n.source.url) ? n.source.url : '';
-      md += `## ${title}\\n`; if (link) md += `[${link}](${link})\\n\\n`; md += `> ${String(n.text||'').replace(/\\n/g,'\\n> ')}\\n\\n— _${when}_\\n\\n`;
+      md += `## ${title}\n`; if (link) md += `[${link}](${link})\n\n`; md += `> ${String(n.text||'').replace(/\n/g,'\n> ')}\n\n— _${when}_\n\n`;
     }
     const blob = new Blob([md], { type:'text/markdown' });
     const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='aura_notes.md'; a.click();
     setTimeout(()=>URL.revokeObjectURL(url),500);
   });
-  // Clear all notes
   noteClearBtn.addEventListener('click', async ()=>{
     if (!confirm('Clear all notes?')) return;
     await setStore(K_NOTES, []);
@@ -553,8 +654,10 @@
 
   // Tasks
   function taskRow(t, idx){
+    const due = (t.title.match(/#(today|tomorrow|thisweek)/i)||[])[0] || '';
+    const pill = due ? `<span class="task-due">${due}</span>` : '';
     const li=document.createElement('li'); li.className='row-task';
-    li.innerHTML = `<label class="task-item"><input type="checkbox" data-idx="${idx}" ${t.done?'checked':''}/> <span>${escapeHtml(t.title)}</span></label>
+    li.innerHTML = `<label class="task-item"><input type="checkbox" data-idx="${idx}" ${t.done?'checked':''}/> <span>${escapeHtml(t.title)} ${pill}</span></label>
       <button class="task-del aura-btn" data-idx="${idx}">Delete</button>`;
     return li;
   }
@@ -574,7 +677,6 @@
     const tasks = await getStore(K_TASKS, []);
     const next = tasks.filter(t=>!t.done); await setStore(K_TASKS, next); renderTasks();
   });
-  // Task list delegation
   tasksList.addEventListener('change', async (e)=>{
     const cb = e.target.closest('input[type="checkbox"]'); if (!cb) return;
     const idx = Number(cb.getAttribute('data-idx') || cb.dataset.idx || -1);
@@ -608,7 +710,7 @@
   }
   recentRefreshBtn.addEventListener('click', renderRecents);
 
-  // ---------- Selection Toolbar ----------
+  // Selection toolbar (no Pin)
   function withinAura(node){
     for (let n = node; n; n = n.parentNode) {
       if (n === root) return true;
@@ -640,14 +742,12 @@
     return node ? node.getBoundingClientRect() : null;
   }
   let toolbarEnabled = true;
-  let toolbarPinned = false;
-  let pinnedText = '';
   async function refreshToolbarSetting(){
     try { const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' }); toolbarEnabled = !resp || resp.toolbar !== false; } catch { toolbarEnabled = true; }
   }
   refreshToolbarSetting();
 
-  function hideSelTb(){ if (!toolbarPinned) selTb.classList.add('hidden'); }
+  function hideSelTb(){ selTb.classList.add('hidden'); }
   function positionSelTb(){
     if (!toolbarEnabled) { hideSelTb(); return; }
     const sel = window.getSelection();
@@ -675,26 +775,25 @@
   document.addEventListener('selectionchange', () => { positionSelTb(); }, { passive: true });
   window.addEventListener('scroll', () => { if (!selTb.classList.contains('hidden')) positionSelTb(); }, { passive: true });
   window.addEventListener('resize', () => { if (!selTb.classList.contains('hidden')) positionSelTb(); }, { passive: true });
-  window.addEventListener('blur', () => { if (!toolbarPinned) selTb.classList.add('hidden'); }, { passive: true });
+  window.addEventListener('blur', () => { selTb.classList.add('hidden'); }, { passive: true });
   document.addEventListener('mousedown', (e)=> { if (!e.target.closest('#aura-seltb')) hideSelTb(); }, true);
 
   selTb.addEventListener('click', async (e) => {
     const btn = e.target.closest('.tb-btn'); if (!btn) return;
-    let text = getSelectionText(); const act = btn.dataset.act; if (!text && toolbarPinned) text = pinnedText;
-    if (act === 'pin') { toolbarPinned = !toolbarPinned; if (toolbarPinned) pinnedText = getSelectionText(); selTb.classList.toggle('pinned', toolbarPinned); return; }
+    let text = getSelectionText();
     if (!text) { hideSelTb(); return; }
     hideSelTb();
     togglePanel(true); showTab('assist'); input.focus();
-    if (act === 'save') {
+    if (btn.dataset.act === 'save') {
       const notes = await getStore(K_NOTES, []);
-      notes.unshift({ text, source:{ url: location.href, title: document.title }, ts: now() });
+      notes.unshift({ text, source:{ url: location.href, title: document.title }, ts: now(), tags:[hostTag()] });
       await setStore(K_NOTES, notes); toast('Saved to Notes'); return;
     }
     const templates = { explain: `Explain this selection in simple terms:\n\n${text}`, summarize: `Summarize this selection in 3–5 bullets:\n\n${text}`, translate: `Translate this into English:\n\n${text}` };
-    handleSend(templates[act] || text);
+    handleSend(templates[btn.dataset.act] || text);
   });
 
-  // ---- Init ----
+  // Init
   (async () => {
     try { const resp = await chrome.runtime.sendMessage({ type:'aura:getSettings' }); if (resp && resp.mode) { currentMode = (resp.mode === 'deep' ? 'deep' : 'quick'); updateModeUI(); } } catch {}
     await pushRecent();

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Aura \u2013 In\u2011Page Assistant (Phase 7 + Mini 6.5.2) HOTFIX",
-  "version": "0.7.0.1",
-  "description": "Panel\u2011local settings modal, selection toolbar with Pin snapshot, Notes/Tasks fixes, Multi\u2011Provider (Groq/OpenAI) with sync and fallback.",
+  "name": "Aura \u2013 In\u2011Page Assistant (Phase 8)",
+  "version": "0.8.0",
+  "description": "Dynamic intent, article TL;DR, product compare, notes/tasks, multi-provider (Groq/OpenAI), panel\u2011local modal.",
   "icons": {
     "16": "assets/icon16.png",
     "48": "assets/icon48.png",
