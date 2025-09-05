@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Aura \u2013 In\u2011Page Assistant (Phase 7 + Mini 6.5.2)",
-  "version": "0.7.0",
+  "name": "Aura \u2013 In\u2011Page Assistant (Phase 7 + Mini 6.5.2) HOTFIX",
+  "version": "0.7.0.1",
   "description": "Panel\u2011local settings modal, selection toolbar with Pin snapshot, Notes/Tasks fixes, Multi\u2011Provider (Groq/OpenAI) with sync and fallback.",
   "icons": {
     "16": "assets/icon16.png",

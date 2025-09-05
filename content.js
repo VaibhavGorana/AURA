@@ -316,24 +316,24 @@
                ] };
     }
     if (isYouTube) return { intent:`It looks like you’re watching a video — “${title || host}”. Want a summary or key moments?`, badges:[`▶️ ${host}`], chips:[
-      { label:'Video TL;DR', template:`Summarize the main points of this video based on its title and context.` },
+      { label:'Video TL;DR', template:`Summarize the main points of this video based on its title && context.` },
       { label:'Key moments', template:`List likely key moments or chapters for this video topic.` }
     ]};
     if (isGitHub) {
       const parts = path.split('/').filter(Boolean);
       const repo = parts.length >= 2 ? `${parts[0]}/${parts[1]}` : title || host;
       return { intent:`It looks like you’re viewing a code repository — “${repo}”. Want a README or feature overview?`, badges:[`👩‍💻 ${host}`], chips:[
-        { label:'Explain repo', template:`Give a high-level overview of the ${repo} repository based on its README and common patterns.` },
-        { label:'Key files', template:`List likely key files or directories and what they do for ${repo}.` }
+        { label:'Explain repo', template:`Give a high-level overview of the ${repo} repository based on its README && common patterns.` },
+        { label:'Key files', template:`List likely key files or directories && what they do for ${repo}.` }
       ]};
     }
     if (isWiki) return { intent:`It looks like you’re reading a reference page — “${title || host}”. Want a concise summary or key facts?`, badges:[`📘 ${host}`, readTime && `⏱️ ${readTime}`].filter(Boolean), chips:[
       { label:'Summary', template:`Summarize the key points of this topic in 5 bullets.` },
-      { label:'Key facts', template:`List the most important facts and dates about this topic.` }
+      { label:'Key facts', template:`List the most important facts && dates about this topic.` }
     ]};
     if (isProduct) return { intent:`It looks like you’re comparing products — “${title || host}”. Want a quick features/price breakdown?`, badges:[`🛒 ${host}`], chips:[
       { label:'Compare features', template:`Create a simple feature comparison for ${title || host}.` },
-      { label:'Pros & cons', template:`Provide concise pros and cons for ${title || host}.` }
+      { label:'Pros & cons', template:`Provide concise pros && cons for ${title || host}.` }
     ]};
     if (isPDF) return { intent:`It looks like you’re viewing a PDF. Want an overview or bullet summary?`, badges:[`📄 ${host}`], chips:[
       { label:'Outline', template:`Provide a brief outline of the key sections in this PDF.` },
@@ -385,7 +385,7 @@
   resetCtxBtn.addEventListener('click', ()=>{ contextFrozen=false; delete smartCache[location.hostname]; renderIntentAndChips(true); });
   moreChipsBtn.addEventListener('click', async ()=>{
     try { const cfg = await chrome.runtime.sendMessage({ type:'aura:getSettings' });
-      if (!cfg?.groqKey and not cfg?.openaiKey or cfg?.mock) { /* python-style mistake fix below */ }
+      if (((!cfg || (!cfg.groqKey && !cfg.openaiKey)) || (cfg && cfg.mock))) { toast('Connect an API key (&& disable Mock) for extra AI suggestions'); return; }
     } catch {}
     fetchAndAppendSmartChips(cachedContext, true);
   });
